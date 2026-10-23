@@ -1,0 +1,1471 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ImportTycoon</title>
+<meta name="description" content="ImportTycoon: construa seu império de importação. Fornecedor, modal, câmbio, NCM, tributos, Radar, galpão e canais de venda em 12 meses. Um jogo da Mainô.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ImportTycoon">
+<meta property="og:description" content="ImportTycoon: construa seu império de importação. Fornecedor, modal, câmbio, NCM, tributos, Radar, galpão e canais de venda em 12 meses. Um jogo da Mainô.">
+<meta property="og:image" content="icons/importtycoon-icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#1A2B4A">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/importtycoon-icon-64.png">
+<link rel="apple-touch-icon" href="icons/importtycoon-icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600&family=Press+Start+2P&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%} [hidden]{display:none!important}
+</style>
+<style>
+/* Layout: painel de operação à esquerda (abas por área da importadora), mentora Mia + diário à direita; stack no celular. */
+:root{
+  --bg:#F3F6F9; --surface:#FFFFFF; --fg:#1A2B4A; --muted:#5B6B82; --line:#D9E1EA;
+  --brand:#00B386; --brand-ink:#0A7B5F; --soft:#E8F8F3; --navy:#1A2B4A; --navy-fg:#FFFFFF;
+  --warn:#C98A00; --warn-soft:#FFF4D6; --bad:#D14343; --bad-soft:#FDE7E7; --good:#00B386;
+  --display:"Barlow Condensed","Arial Narrow",Impact,sans-serif; --body:"Barlow",system-ui,Segoe UI,Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E1626; --surface:#162038; --fg:#E8EEF6; --muted:#9DAEC4; --line:#28385A;
+  --brand:#1ED3A5; --brand-ink:#8FF0D2; --soft:#113A33; --navy:#0B1222; --navy-fg:#E8EEF6;
+  --warn:#F2B53B; --warn-soft:#3A2E10; --bad:#F06C6C; --bad-soft:#3E1A1A; --good:#1ED3A5; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E1626; --surface:#162038; --fg:#E8EEF6; --muted:#9DAEC4; --line:#28385A;
+  --brand:#1ED3A5; --brand-ink:#8FF0D2; --soft:#113A33; --navy:#0B1222; --navy-fg:#E8EEF6;
+  --warn:#F2B53B; --warn-soft:#3A2E10; --bad:#F06C6C; --bad-soft:#3E1A1A; --good:#1ED3A5; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+h1,h2,h3{font-family:var(--display);line-height:1.05;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:2rem;font-weight:800} h2{font-size:1.45rem;font-weight:800} h3{font-size:1.15rem;font-weight:700}
+p{margin:0}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 14px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+button.primary{background:var(--brand);border-color:var(--brand);color:#06251C;font-weight:600}
+button.ghost{background:transparent}
+button.big{font-family:var(--display);font-size:1.3rem;font-weight:800;padding:12px 22px;border-radius:10px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;max-width:100%}
+input[type=number]{width:7.5em}
+.topbar{background:var(--navy);color:var(--navy-fg);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.topbar .in{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
+.topbar .brand{display:flex;align-items:center;gap:12px}
+.mlogo{display:inline-flex;align-items:center;opacity:.85;padding-right:4px}
+.topbar h1{font-family:"Press Start 2P",var(--display);font-size:1.05rem;font-weight:400;letter-spacing:0;line-height:1.3;padding-top:2px}
+.mlogo img{display:block;width:auto}
+.foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted);text-align:center}
+.foot a{color:var(--brand-ink);font-weight:600}
+.topbar .brand small{opacity:.75;font-size:.85rem}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;margin-left:auto}
+.stat{display:flex;flex-direction:column;min-width:0}
+.stat b{font-family:var(--display);font-size:1.25rem;font-weight:700;line-height:1}
+.stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75}
+.stat.neg b{color:#FF8A8A}
+.stat b{display:inline-block;transform-origin:left center}
+@keyframes statUp{0%{color:#1ED3A5;transform:scale(1.1)}70%{color:#1ED3A5}100%{transform:none}}
+@keyframes statDown{0%{color:#FF8A8A;transform:scale(1.1)}70%{color:#FF8A8A}100%{transform:none}}
+@media (prefers-reduced-motion:no-preference){.stat.up b{animation:statUp 2s ease-out}.stat.down b{animation:statDown 2s ease-out}}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px;max-width:1180px;margin:0 auto}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.base{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:14px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.base canvas{max-width:100%;height:auto}
+.base .cap{font-size:.85rem;color:var(--muted)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--line);margin-bottom:14px}
+.tabs button{border:0;border-radius:8px 8px 0 0;background:transparent;color:var(--muted);font-family:var(--display);font-size:1.1rem;font-weight:700;padding:8px 12px;margin-bottom:-2px;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--fg);border-bottom-color:var(--brand)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.panel + .panel{margin-top:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.field > *{text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--fg)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--bg);min-width:0}
+.card.on{border-color:var(--brand);background:var(--soft)}
+.card h3{font-size:1.05rem}
+.card .m{font-size:.82rem;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right;white-space:nowrap}
+.tbl{overflow-x:auto;min-width:0}
+.tbl.dense table{font-size:.86rem}.tbl.dense th,.tbl.dense td{padding:5px 6px}.tbl.dense input[type=number],.tbl.dense select{padding:5px 6px}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:600;letter-spacing:.03em}
+.pill.verde{background:var(--soft);color:var(--brand-ink)} .pill.amarelo{background:var(--warn-soft);color:var(--warn)} .pill.vermelho{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.muted{color:var(--muted)} .small{font-size:.85rem} .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+.mia{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px)}
+.mia .who{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.mia .av{width:48px;height:48px;border-radius:12px;background:var(--soft);display:grid;place-items:center;flex:none}
+.mia .tip{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.93rem}
+.log{margin-top:12px;font-size:.84rem;max-height:40vh;overflow:auto}
+.log div{padding:5px 0;border-top:1px solid var(--line)}
+.log .t{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+.overlay{position:fixed;inset:0;background:rgba(10,18,34,.55);display:grid;place-items:center;z-index:20;padding:max(16px,env(safe-area-inset-left,0px))}
+.modal{background:var(--surface);color:var(--fg);border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:20px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.modal h2{margin-bottom:8px}
+.modal .body{display:flex;flex-direction:column;gap:10px}
+.mia-note{display:flex;gap:10px;background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.92rem;margin-top:6px}
+.mia-note .av{width:32px;height:32px;border-radius:8px;background:var(--surface);display:grid;place-items:center;flex:none}
+.opt{display:block;width:100%;text-align:left;padding:10px 12px;margin-top:6px}
+.opt:hover{border-color:var(--brand)}
+.msg{background:var(--bg);border-left:3px solid var(--navy);padding:10px 12px;border-radius:0 8px 8px 0}
+.msg .orig{font-size:1rem} .msg .tr{color:var(--muted);font-size:.9rem;margin-top:4px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.kpi b{font-family:var(--display);font-size:1.4rem;font-weight:700;display:block;line-height:1.1}
+.kpi span{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.start{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.start .hero{background:var(--navy);color:var(--navy-fg);border-radius:16px;padding:22px}
+.start .hero h1{font-size:3rem}
+.start .hero p{opacity:.85;margin-top:8px;max-width:48ch}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.modes{grid-template-columns:1fr}}
+.mode{border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;background:var(--surface);text-align:left}
+.mode.on{border-color:var(--brand);background:var(--soft)}
+.selos{display:flex;flex-wrap:wrap;gap:6px}
+.explain{border-top:1px solid var(--line);padding:8px 0}
+tr.prev td{color:var(--muted);font-style:italic}
+.explain:first-of-type{border-top:0}
+.share{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px;background:var(--bg)}
+.share h3{text-align:center}
+.selo{background:var(--navy);color:var(--navy-fg);border-radius:8px;padding:4px 10px;font-family:var(--display);font-weight:700;font-size:.95rem}
+.cascade td:first-child{color:var(--muted)}
+.cascade tr.total td{font-weight:700;border-top:2px solid var(--fg);color:var(--fg)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand)}
+.bar.hot i{background:var(--warn)}
+.cta{display:inline-block;background:var(--brand);color:#06251C;font-weight:700;padding:12px 18px;border-radius:10px;text-decoration:none;font-family:var(--display);font-size:1.2rem}
+.tipbtn{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--brand);background:transparent;color:var(--brand-ink);font:700 11px var(--body);padding:0;margin-left:6px;vertical-align:middle;cursor:help;line-height:1}
+.tipbtn:hover{background:var(--soft)}
+.tipbox{position:fixed;z-index:30;background:var(--surface);border:1px solid var(--brand);border-radius:10px;padding:10px 12px;font-size:.88rem;line-height:1.4;color:var(--fg);box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:400;text-transform:none;letter-spacing:0;text-align:left;white-space:normal}
+.spr{image-rendering:pixelated;image-rendering:crisp-edges;vertical-align:middle;flex:none}
+.card .spr{float:right;margin:-2px 0 4px 8px}
+.mhead{display:flex;align-items:center;gap:12px;margin-bottom:8px}.mhead h2{margin:0;flex:1}
+.mclose{width:34px;height:34px;border-radius:50%;padding:0;font-size:1.3rem;line-height:1;flex:none;color:var(--muted)}
+.mclose:hover{color:var(--fg);border-color:var(--fg)}
+.base canvas{width:100%;max-width:720px;height:auto;border-radius:8px;display:block}
+.hero-strip{display:flex;gap:18px;align-items:flex-end;margin-top:14px;flex-wrap:wrap}
+.office-wrap{padding:8px 8px 10px}
+#office{width:100%;max-width:720px;height:auto;display:block;border-radius:8px;cursor:pointer}
+.rooms{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}/* só para leitores de tela e teclado: a planta é o seletor visual */
+.walking{display:flex;align-items:center;gap:12px;color:var(--muted)}
+.avatars{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media (max-width:520px){.avatars{grid-template-columns:repeat(3,1fr)}}
+.mode.av{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;font-weight:600;font-size:.9rem}
+.topbar .brand .spr{margin-right:4px}
+@media (prefers-reduced-motion:no-preference){.card,.mode,button{transition:border-color .15s,background .15s}}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+/* ===================== DADOS DO JOGO (nicho: eletrônicos) ===================== */
+const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+let SEASON=[0.80,0.80,0.90,0.95,1.12,0.90,0.95,1.00,1.00,1.05,1.60,1.40];
+const seasonLabel=v=>v>=1.3?'pico':v>=1.05?'aquecendo':v<=0.9?'baixa':'média';
+const ELETRONICOS=[
+ {id:'fone',name:'Fone Bluetooth',fob:6.0,m3:0.0012,kg:0.12,market:119,base:800,ii:0.18,ipi:0.0975,anu:{org:'Anatel',label:'Homologação Anatel (certificação por OCD)',cost:2500,lead:1,risk:0.1,pre:false},
+  ncm:[{c:'8518.30.00',ok:true,d:'Fones de ouvido, mesmo combinados com microfone. O Bluetooth não muda a função essencial (SC Cosit 98.245/2024).'},{c:'8518.21.00',ok:false,d:'Alto-falante único montado no seu receptáculo'},{c:'8517.62.59',ok:false,d:'Outros aparelhos de recepção, conversão e transmissão de voz, imagem ou dados'}]},
+ {id:'carregador',name:'Carregador USB-C 20W',fob:2.5,m3:0.0004,kg:0.06,market:49,base:1200,ii:0.162,ipi:0.0375,anu:{org:'Inmetro',label:'Certificação compulsória Inmetro',cost:3000,lead:1,risk:0.1,pre:false},
+  ncm:[{c:'8504.40.21',ok:true,d:'Retificadores de cristal (semicondutores). A Receita trata o carregador de tomada como retificador, não como carregador de acumuladores (SC Cosit 279/2017).'},{c:'8504.40.10',ok:false,d:'Carregadores de acumuladores (com circuito de controle de carga da bateria)'},{c:'8504.40.90',ok:false,d:'Outros conversores estáticos'}]},
+ {id:'smartwatch',name:'Smartwatch (Wi-Fi e GPS)',fob:18,m3:0.0008,kg:0.09,market:349,base:320,ii:0.16,ipi:0.15,anu:{org:'Anatel',label:'Homologação Anatel (certificação por OCD)',cost:2500,lead:1,risk:0.1,pre:false},
+  ncm:[{c:'8517.62.77',ok:true,d:'Aparelhos de recepção, conversão e transmissão de dados, de frequência inferior a 15 GHz, taxa acima de 34 Mbit/s (Wi-Fi). Smartwatch com Wi-Fi e GPS: SC Cosit 98.008/2020.'},{c:'8517.62.72',ok:false,d:'Idem, taxa de transmissão até 34 Mbit/s (só Bluetooth)'},{c:'9102.12.20',ok:false,d:'Relógios de pulso digitais (orientação antiga da Secex, superada pelo parecer da OMA)'}]},
+ {id:'caixa',name:'Caixa de som Bluetooth',fob:12,m3:0.006,kg:0.9,market:229,base:400,ii:0.18,ipi:0.15,anu:{org:'Anatel',label:'Homologação Anatel (certificação por OCD)',cost:2500,lead:1,risk:0.1,pre:false},
+  ncm:[{c:'8518.22.00',ok:true,d:'Alto-falantes múltiplos montados no mesmo receptáculo (dois drivers na mesma caixa)'},{c:'8518.21.00',ok:false,d:'Alto-falante único montado no seu receptáculo'},{c:'8519.81.90',ok:false,d:'Outros aparelhos de gravação ou reprodução de som'}]},
+];
+const SUPPLIER_OPTS={
+ shenzhen:[{t:'Manda logo o preço final, quero fechar hoje.',k:'bad',why:'Pressa sinaliza comprador inexperiente. O fornecedor segurou o preço e empurrou o MOQ.'},
+        {t:'Obrigado. Antes de fechar volume, podem enviar amostra e a ficha técnica?',k:'good',why:'Pedir amostra é praxe na China. Mostra que você compra sério e recorrente. Ganhou desconto.'},
+        {t:'Qual o desconto se eu pagar 100% adiantado?',k:'neutral',why:'Pagar tudo antes de ver a carga é risco seu, não vantagem. Nada mudou.'}],
+ guangzhou:[{t:'Meu preço-alvo é 20% abaixo do seu. É pegar ou largar.',k:'bad',why:'Ultimato sem volume na mesa fecha portas. Trading sólida não precisa de você.'},
+        {t:'Planejamos pedidos recorrentes. Podemos fechar preço de volume para 3 embarques?',k:'good',promise:{more:2,gap:3},why:'Recorrência é a moeda que o fornecedor quer. Preço de volume destravado para 3 embarques: este e mais 2, com no máximo 3 meses entre um pedido e outro. Se você sumir, ele cobra.'},
+        {t:'Ok, manda a proforma invoice.',k:'neutral',why:'Fechou no preço de lista. Nenhum erro, nenhuma vantagem.'}],
+ taipei:[{t:'Preciso do mais barato possível, qualidade não importa.',k:'bad',why:'Fornecedor de certificação não compete por preço. Você perdeu respeito e um ponto de desconto.'},
+        {t:'Ótimo, as certificações ajudam na regularização aqui. Fechamos 2 lotes com pagamento 30/70?',k:'good',promise:{more:1,gap:3},why:'Valorizou o diferencial dele e deu previsibilidade. Desconto concedido para 2 lotes: este e mais um em até 3 meses.'},
+        {t:'Qual o prazo de produção?',k:'neutral',why:'Pergunta já respondida na mensagem. Fechou no preço de lista.'}],
+};
+function makeSuppliers(seg){
+  const n=seg.supplierNames;
+  return [
+   {id:'shenzhen',name:n[0],flag:'🇨🇳',country:'China',mult:0.85,rel:0.72,moq:300,deposit:0.5,
+    msg:{orig:'你好老板！价格很好，今天下单有优惠。最少300件，先付50%。',tr:'Olá chefe! Preço muito bom, pedido hoje tem desconto. Mínimo 300 peça, pagar 50% primeiro.'},opts:SUPPLIER_OPTS.shenzhen},
+   {id:'guangzhou',name:n[1],flag:'🇨🇳',country:'China',mult:1.0,rel:0.92,moq:200,deposit:0.3,
+    msg:{orig:'Dear Sir, thank you for inquiry. MOQ 200pcs, 30% deposit, lead time 25 days. Pls advise target price.',tr:'Prezado, obrigado pela consulta. MOQ 200 peças, 30% de sinal, produção em 25 dias. Informe seu preço-alvo.'},opts:SUPPLIER_OPTS.guangzhou},
+   seg.id==='beleza'
+    ?{id:'taipei',name:n[2],flag:'🇰🇷',country:'Coreia',mult:1.22,rel:0.99,moq:100,deposit:0.3,
+      msg:{orig:'안녕하세요, 문의 감사합니다. 저희 제품은 GMP(ISO 22716) 인증을 받았으며 MOQ 100, 납기 20일입니다.',tr:'Olá, obrigado pela consulta. Nossos produtos têm certificação GMP (ISO 22716), MOQ 100, prazo 20 dias.'},opts:SUPPLIER_OPTS.taipei}
+    :{id:'taipei',name:n[2],flag:'🇹🇼',country:'Taiwan',mult:1.22,rel:0.99,moq:100,deposit:0.3,
+      msg:{orig:seg.id==='pet'?'您好，感謝詢價。我們的產品有SGS材質檢測報告，MOQ 100，交期20天。':'您好，感謝詢價。我們的產品有CE/FCC認證，MOQ 100，交期20天。',tr:seg.id==='pet'?'Olá, obrigado pela consulta. Nossos produtos têm laudo SGS de materiais, MOQ 100, prazo 20 dias.':'Olá, obrigado pela consulta. Nossos produtos têm certificação CE/FCC, MOQ 100, prazo 20 dias.'},opts:SUPPLIER_OPTS.taipei},
+  ];
+}
+const SEGMENTS={
+ pet:{id:'pet',name:'Pet shop',level:'Fácil',icon:'racao',season:[1,1,1,1,1.1,1,1,1,1,1.05,1.3,1.2],
+  desc:'Demanda estável o ano todo e quase nada de tratamento administrativo: só a ração passa pelo MAPA. O desafio é logístico: produto volumoso e barato, o galpão e o marítimo pesam.',
+  supplierNames:['Yiwu Rápido Pet Supplies','Guangzhou Sólida Pet Trading','Taipei Precision Pet Co.'],
+  products:[
+   {id:'coleira',name:'Coleira de couro com guia',fob:1.8,m3:0.0004,kg:0.08,market:49,base:900,ii:0.18,ipi:0,
+    ncm:[{c:'4201.00.10',ok:true,d:'Artigos de seleiro ou correeiro para animais, de couro natural ou reconstituído'},{c:'4201.00.90',ok:false,d:'Artigos de seleiro ou correeiro para animais, de outras matérias (nylon, poliéster)'},{c:'6307.90.90',ok:false,d:'Outros artigos têxteis confeccionados'}]},
+   {id:'cama',name:'Cama pet acolchoada',fob:5,m3:0.012,kg:0.6,market:134,base:300,ii:0.35,ipi:0,
+    ncm:[{c:'6307.90.90',ok:true,d:'Outros artigos têxteis confeccionados (II de 35%: têxtil confeccionado paga caro)'},{c:'9404.29.00',ok:false,d:'Colchões de outras matérias'},{c:'4201.00.90',ok:false,d:'Artigos de seleiro para animais, de outras matérias'}]},
+   {id:'comedouro',name:'Comedouro plástico duplo',fob:1.5,m3:0.002,kg:0.15,market:34,base:800,ii:0.162,ipi:0.065,
+    ncm:[{c:'3924.90.00',ok:true,d:'Outros artigos de uso doméstico, de plástico'},{c:'3924.10.00',ok:false,d:'Serviços de mesa e outros utensílios de mesa ou cozinha, de plástico'},{c:'3926.90.90',ok:false,d:'Outras obras de plástico'}]},
+   {id:'racao',name:'Ração premium 15 kg',fob:14,m3:0.03,kg:15,market:209,base:250,ii:0.126,ipi:0.065,anu:{org:'MAPA',label:'Registro do produto e LI com anuência do MAPA',cost:2000,lead:1,risk:0.1,pre:true},
+    ncm:[{c:'2309.10.00',ok:true,d:'Alimentos para cães ou gatos, acondicionados para venda a retalho'},{c:'2309.90.90',ok:false,d:'Outras preparações para alimentação de animais'},{c:'2106.90.90',ok:false,d:'Outras preparações alimentícias'}]},
+  ]},
+ eletronicos:{id:'eletronicos',name:'Eletrônicos',level:'Médio',icon:'fone',season:[0.80,0.80,0.90,0.95,1.12,0.90,0.95,1.00,1.00,1.05,1.60,1.40],
+  desc:'Produto leve e caro, margem boa, Black Friday forte. Mas tudo exige homologação Anatel ou certificação Inmetro antes de embarcar, e a NCM errada é comum.',
+  supplierNames:['Shenzhen Rápido Electronics','Guangzhou Sólida Trading','Taipei Precision Co.'],products:ELETRONICOS},
+ beleza:{id:'beleza',name:'Beleza e suplementos',level:'Difícil',icon:'serum',season:[0.9,0.9,1,1,1.3,0.9,0.95,1,1,1.05,1.5,1.4],validade:0.02,
+  desc:'Margens altas, mas todo produto exige LI com anuência da Anvisa: cara, demorada e com chance de exigência. Validade: 2% do estoque parado vence a cada mês. Canal vermelho mais frequente.',
+  supplierNames:['Shenzhen Rápido Beauty','Guangzhou Sólida Cosmetics','Seoul Derma Lab'],
+  products:[
+   {id:'serum',name:'Sérum facial 30 ml',fob:3,m3:0.0003,kg:0.06,market:99,base:500,ii:0.162,ipi:0.143,anu:{org:'Anvisa',label:'Regularização do cosmético e LI com anuência da Anvisa',cost:4000,lead:2,risk:0.2,pre:true},
+    ncm:[{c:'3304.99.10',ok:true,d:'Cremes de beleza, nutritivos e loções tônicas'},{c:'3304.99.90',ok:false,d:'Outros produtos de beleza ou maquiagem e preparações para a pele'},{c:'3004.90.99',ok:false,d:'Outros medicamentos'}]},
+   {id:'protetor',name:'Protetor solar FPS 50',fob:2.5,m3:0.0004,kg:0.09,market:65,base:700,ii:0.162,ipi:0,anu:{org:'Anvisa',label:'Registro do protetor solar e LI com anuência da Anvisa',cost:4000,lead:2,risk:0.2,pre:true},
+    ncm:[{c:'3304.99.90',ok:true,d:'Outras preparações para cuidados da pele, incluindo protetores solares'},{c:'3304.99.10',ok:false,d:'Cremes de beleza, nutritivos e loções tônicas'},{c:'3304.20.90',ok:false,d:'Outros produtos de maquiagem para os olhos'}]},
+   {id:'whey',name:'Whey protein 900 g',fob:9,m3:0.002,kg:1,market:199,base:400,ii:0.126,ipi:0,anu:{org:'Anvisa',label:'LI com anuência da Anvisa (suplemento alimentar)',cost:4000,lead:2,risk:0.2,pre:true},
+    ncm:[{c:'2106.10.00',ok:true,d:'Concentrados de proteínas e substâncias proteicas texturizadas'},{c:'2106.90.30',ok:false,d:'Complementos alimentares (whey hidrolisado cai aqui: SC Cosit 98.155/2023)'},{c:'0404.10.00',ok:false,d:'Soro de leite, mesmo concentrado'}]},
+   {id:'vitaminas',name:'Multivitamínico 60 cápsulas',fob:2,m3:0.0003,kg:0.1,market:55,base:600,ii:0.144,ipi:0,anu:{org:'Anvisa',label:'LI com anuência da Anvisa (suplemento alimentar)',cost:4000,lead:2,risk:0.2,pre:true},
+    ncm:[{c:'2106.90.30',ok:true,d:'Complementos alimentares'},{c:'3004.50.90',ok:false,d:'Outros medicamentos contendo vitaminas (dosagem terapêutica)'},{c:'2106.90.90',ok:false,d:'Outras preparações alimentícias'}]},
+  ]},
+};
+let PRODUCTS=ELETRONICOS, SUPPLIERS=makeSuppliers(SEGMENTS.eletronicos), SEG=SEGMENTS.eletronicos;
+function applySegment(id){SEG=SEGMENTS[id]||SEGMENTS.eletronicos;PRODUCTS=SEG.products;SUPPLIERS=makeSuppliers(SEG);SEASON=SEG.season;}
+const MODAIS={
+ fcl:{name:'Marítimo FCL (contêiner 20\')',lead:2,minM3:20,maxM3:33,fixed:9000,perM3:0,capatazia:1500,afrmm:true,desc:'Contêiner inteiro. Barato por unidade, exige volume e lugar pra guardar.'},
+ lcl:{name:'Marítimo LCL (carga fracionada)',lead:2,minM3:0,maxM3:19,fixed:900,perM3:450,capatazia:900,afrmm:true,desc:'Divide o contêiner. Mais manuseio, mais avaria, mais barato que aéreo.'},
+ aereo:{name:'Aéreo',lead:1,minM3:0,maxM3:12,fixed:800,perM3:4500,capatazia:500,afrmm:false,desc:'Chega no mês seguinte. Cobrado por peso cubado: compensa em produto leve e caro, pesa em produto volumoso.'},
+ courier:{name:'Courier (remessa expressa)',lead:0,minM3:0,maxM3:0.5,maxFOB:3000,fixed:300,perM3:9000,capatazia:0,afrmm:false,desc:'Chega ainda este mês. Só pequenas remessas: até US$ 3 mil FOB e 0,5 m³. Bom pra amostra e teste de mercado.'},
+};
+const RADAR=[{name:'Expressa',limit:50000,cost:0,req:0},{name:'Limitada',limit:150000,cost:8000,req:1},{name:'Ilimitada',limit:Infinity,cost:25000,req:3}];
+const WAREHOUSES=[{name:'Só o escritório',cap:12,rent:0,desc:'12 m³ de sobra na sala. O que passar vai pra armazém 3PL a R$ 150/m³ por mês.'},
+                  {name:'Galpão P',cap:80,rent:4000,desc:'80 m³. Cabe um LCL grande ou um FCL apertado.'},
+                  {name:'Galpão G',cap:250,rent:9000,desc:'250 m³. Vários contêineres e estoque pra Black Friday.'}];
+const FIXED_COST=5000, GIRO_RATE=0.032, GIRO_MAX=80000, FINIMP_RATE=0.013, FINIMP_MAX=150000, MAINO_FEE=990, BUYER_FEE=5000, THREEPL=150;
+const START_CASH=150000;
+const cfAdd=(k,v)=>{const s=S;s.cf||(s.cf={});s.cf[k]=(s.cf[k]||0)+v;};
+const INSP_COST=1800;                                   // inspeção pré-embarque por embarque
+const riskNoInsp=sup=>Math.min(0.4,(1-sup.rel)*1.2);    // chance de incidente sem inspeção: 34% / 10% / 1%
+const riskScam=(s,sup)=>sup.rel<0.8&&!(s.scamSeen||{})[sup.id]?0.04:0; // fornecedor barato pode sumir com o sinal no primeiro pedido
+const LEVELS=[{n:1,name:'Garagem',xp:0,perk:'Começo de tudo.'},{n:2,name:'Escritório',xp:100000,perk:'Fornecedores aceitam pedido mínimo 25% menor.'},{n:3,name:'Importadora',xp:300000,perk:'O banco baixa o capital de giro para 2,5% ao mês.'},{n:4,name:'Trading',xp:600000,perk:'Reputação no mercado: +10% de demanda em todos os produtos.'},{n:5,name:'Grupo Importador',xp:1200000,perk:'Radar Ilimitada concedido sem custo.'}];
+const MARCOS=[{id:'imp1',name:'Primeira importação concluída',cond:s=>s.imports>=1},{id:'sys',name:'Sistema de gestão contratado',cond:s=>sysLv(s)>=1},{id:'maino',name:'Mainô ERP em operação',cond:s=>sysLv(s)>=2},{id:'galpao',name:'Primeiro galpão alugado',cond:s=>s.wh>=1},{id:'radar',name:'Radar Limitada ou superior',cond:s=>s.radar.level>=1},{id:'mil',name:'1.000 unidades vendidas',cond:s=>(s.unitsTot||0)>=1000},{id:'fcl',name:'Primeiro contêiner cheio (FCL)',cond:s=>s.stats.fcl>=1},{id:'parceiro',name:'Fornecedor parceiro (acordo cumprido)',cond:s=>Object.values(s.rel||{}).some(r=>r.partner)},{id:'filial',name:'Filial com benefício fiscal',cond:s=>filialOk(s)},{id:'dobrou',name:'Capital dobrado (patrimônio de R$ 300 mil)',cond:s=>patrimonio(s)>=300000}];
+const MARCO_XP=50000;
+const xp=s=>(s.xpRev||0)+(s.marcos||[]).length*MARCO_XP;
+const level=s=>{let l=LEVELS[0];for(const L of LEVELS)if(xp(s)>=L.xp)l=L;return l;};
+const nextLevel=s=>LEVELS.find(L=>L.xp>xp(s))||null;
+const giroRate=s=>level(s).n>=3?0.025:GIRO_RATE;
+const moqOf=(s,sup)=>Math.round(sup.moq*(level(s).n>=2?0.75:1));
+const MKT_MAX=40000, MKT_K=6000, MKT_LIFT=1.0;
+const mktLift=b=>MKT_LIFT*b/(b+MKT_K);           // retorno decrescente: R$ 6 mil = +50%, R$ 18 mil = +75%
+const brand=s=>s.brand==null?1:s.brand;            // confiança da marca (0,4 a 1,0) multiplica a demanda
+const FILIAL={name:'Filial em Santa Catarina (TTD 409)',setup:35000,rent:3500,lead:1,cap:80,icmsEfetivo:0.026,reqImports:2,reqRadar:1};
+const filialOk=s=>!!(s.filial&&s.filial.status==='ok');
+const LOGO8=["....................", ".##........###..##..", ".####.....######....", ".######..######.....", "..#######..###......", "...########.##......", ".........####.......", "...#########........", "...########.........", "....###...###.......", ".......####.#.......", ".....#####.##.......", "......###.###.......", ".........####.......", "........####........", ".......####.........", ".......###..........", ".......##...........", ".......#............", "...................."];
+const logoCache={};
+function logo8URL(color,cell,bg,pad){const key=[color,cell,bg,pad].join('|');if(logoCache[key])return logoCache[key];const n=LOGO8.length;const P=pad||0;const c=document.createElement('canvas');c.width=n*cell+2*P;c.height=n*cell+2*P;const x=c.getContext('2d');
+  if(bg){x.fillStyle=bg;const r=Math.max(cell,Math.round(c.width*0.18));x.fillRect(r,0,c.width-2*r,c.height);x.fillRect(0,r,c.width,c.height-2*r);x.fillRect(cell,cell,c.width-2*cell,c.height-2*cell);for(let i=1;i<r/cell;i++){x.fillRect(cell*i,cell*Math.max(1,Math.round(r/cell)-i),c.width-2*cell*i,c.height-2*cell*Math.max(1,Math.round(r/cell)-i));}}
+  x.fillStyle=color;LOGO8.forEach((row,j)=>{[...row].forEach((ch,i)=>{if(ch==='#')x.fillRect(P+i*cell,P+j*cell,cell,cell);});});return logoCache[key]=c.toDataURL('image/png');}
+const mainoLogo=h=>`<span class="mlogo" title="Mainô"><img class="spr" src="${logo8URL('#ffffff',4)}" alt="Mainô" style="height:${h||30}px"></span>`;
+function setAppIcon(){try{const href=logo8URL('#00B386',6,'#1A2B4A',8);let l=document.querySelector('link[rel="icon"]');if(!l){l=document.createElement('link');l.rel='icon';document.head.appendChild(l);}l.type='image/png';l.href=href;let a=document.querySelector('link[rel="apple-touch-icon"]');if(!a){a=document.createElement('link');a.rel='apple-touch-icon';document.head.appendChild(a);}a.href=logo8URL('#00B386',8,'#1A2B4A',10);}catch(e){}}
+const FOOTER='<footer class="foot">Desenvolvido por <a href="https://www.maino.com.br" target="_blank" rel="noopener">Mainô Tecnologia S.A.</a> · ImportTycoon é um jogo educativo: alíquotas, prazos e custos são simplificações da operação real e não substituem uma simulação de custo de importação.</footer>';
+const SYSTEMS=[
+ {lv:0,name:'Sem sistema',fee:0,short:'sem sistema',desc:'Sem emissão de NF-e: só metade dos clientes B2B compra, marketplace bloqueado e 20% de chance por mês de a fiscalização multar e parar a operação.'},
+ {lv:1,name:'Sistema generalista',fee:600,short:'ERP generalista',desc:'Emite NF-e e libera o marketplace. Mas não entende de importação: 35% de chance de erro na NF-e de importação a cada chegada e, se a fiscalização vier, multa.'},
+ {lv:2,name:'Mainô ERP · Plano Operação',fee:990,short:'Mainô Operação',desc:'NF-e de importação a partir da DUIMP sem erro. Fiscalização nunca multa: você está sempre preparado. Metade do risco de canal vermelho, sugestão de NCM, aviso antecipado de mudança de norma. Economiza R$ 800/mês de retrabalho e R$ 500 por processo no despachante.'},
+ {lv:3,name:'Mainô ERP · Plano Gestão',fee:1690,short:'Mainô Gestão',desc:'Ganho operacional: documentação pronta antes da chegada corta pela metade a armazenagem extra de canal amarelo e vermelho, elimina demurrage e o efeito de porto congestionado. Contabilidade integrada economiza mais R$ 800/mês. Previsão de demanda exata por 3 meses.'},
+ {lv:4,name:'Mainô ERP · Plano Comando',fee:2900,short:'Mainô Comando',desc:'Decisões melhores: sugestão de quantidade de pedido com base em estoque, trânsito e demanda; análise de crédito de clientes zera a inadimplência B2B; canal amarelo cai pela metade também.'},
+];
+const sysLv=s=>s.sys!=null?s.sys:(s.up&&s.up.maino?2:0);
+const hasMaino=s=>sysLv(s)>=2;
+
+/* ===================== EVENTOS ===================== */
+const EVENTS=[
+ {id:'dolar_up',w:3,title:'Dólar dispara',text:'Ruído fiscal em Brasília e o dólar subiu 8% em uma semana.',mia:'Quem travou o câmbio não sentiu. Quem ia pagar o saldo este mês vai pagar mais caro.',
+  apply:s=>{s.dollar*=1.08;}},
+ {id:'dolar_down',w:2,title:'Dólar recua',text:'Fluxo de investidores estrangeiros derrubou o dólar 5%.',mia:'Bom mês pra fechar pedidos. Saldo de pedidos sem trava fica mais barato.',
+  apply:s=>{s.dollar*=0.95;}},
+ {id:'greve',w:2,title:'Greve dos auditores fiscais',text:'Auditores da Receita cruzaram os braços. Todo desembaraço previsto para este mês atrasa 30 dias.',mia:'Acontece quase todo ano. Quem opera just in time sem estoque de segurança perde venda.',
+  cond:s=>s.ships.some(x=>x.eta===s.turn),apply:s=>{s.ships.filter(x=>x.eta===s.turn).forEach(x=>x.eta++);}},
+ {id:'navio',w:2,title:'Navio rolou',text:'Sua carga marítima não embarcou no navio previsto e foi para o próximo. Mais 30 dias.',mia:'Chama-se roll-over. Em alta temporada é comum. Aéreo não tem isso, mas custa 5x.',
+  cond:s=>s.ships.some(x=>x.eta===s.turn&&(x.modal==='fcl'||x.modal==='lcl')),apply:s=>{const x=s.ships.find(x=>x.eta===s.turn&&(x.modal==='fcl'||x.modal==='lcl'));if(x)x.eta++;}},
+ {id:'pedido',w:3,title:'Pedido grande inesperado',text:null,mia:'Oportunidade só vale pra quem tem estoque. É o argumento a favor do galpão.',choice:true,
+  cond:s=>PRODUCTS.some(p=>stk(s,p.id).qty>=150),
+  setup:s=>{const p=PRODUCTS.filter(p=>stk(s,p.id).qty>=150)[randIdx(PRODUCTS.filter(p=>stk(s,p.id).qty>=150).length)];const q=Math.min(stk(s,p.id).qty,Math.round(150+rand()*250));return{pid:p.id,qty:q,price:Math.round(p.market*0.93),p};},
+  textFn:d=>`Uma rede de lojas quer ${d.qty} unidades de ${d.p.name} a ${fmt(d.price)} cada, pagamento à vista. Aceita?`,
+  accept:(s,d)=>{const st=stk(s,d.pid);const cmv=st.avg*d.qty;st.qty-=d.qty;s.cash+=d.price*d.qty;s.m.rev+=d.price*d.qty;s.m.cmv+=cmv;s.m.units+=d.qty;log(s,`Pedido grande: ${d.qty} ${d.p.name} por ${fmt(d.price*d.qty)} à vista.`);}},
+ {id:'concorrente',w:2,title:'Concorrente derruba o preço',text:null,mia:'Guerra de preço em marketplace é normal. Ou você acompanha e perde margem, ou segura estoque pra depois.',
+  setup:s=>{const p=PRODUCTS[randIdx(PRODUCTS.length)];return{pid:p.id,p};},
+  textFn:d=>`Um concorrente inundou o marketplace com ${d.p.name} 15% mais barato. O preço de mercado cai por 2 meses.`,
+  apply:(s,d)=>{s.priceMod[d.pid]={f:0.85,until:s.turn+1};}},
+ {id:'porto',w:2,title:'Congestionamento no porto',text:'Chuva e navio encalhado. Armazenagem no porto dobrou este mês.',mia:'Cada dia no porto custa. Documentação pronta antes da chegada reduz o tempo parado.',
+  apply:s=>{s.flags.portoX2=s.turn;}},
+ {id:'aliquota',w:2,title:'Receita muda alíquota',text:'A Receita Federal elevou em 4 pontos o Imposto de Importação dos seus produtos por 3 meses.',mia:'Quem tem sistema especializado é avisado antes de a norma entrar em vigor. Quem não tem, descobre ao registrar a DUIMP.',
+  cond:s=>!s.flags.aliqDone,apply:s=>{s.flags.aliqDone=true;s.tax.iiExtra=0.04;s.flags.aliqUntil=s.turn+2;}},
+ {id:'calote',w:2,title:'Cliente atrasou e deu calote parcial',text:null,mia:'B2B paga em 45 a 60 dias e às vezes não paga. Antecipar recebíveis (FIDC) custa, mas protege o caixa.',
+  cond:s=>s.recv.length>0&&sysLv(s)<4,setup:s=>{const r=s.recv.reduce((a,b)=>a.amount>b.amount?a:b);return{r};},
+  textFn:d=>`Seu maior cliente B2B renegociou: você só vai receber metade dos ${fmt(d.r.amount)} previstos.`,
+  apply:(s,d)=>{d.r.amount=Math.round(d.r.amount/2);}},
+ {id:'fiscalizacao',w:1,title:'Fiscalização no estoque',text:null,mia:'Nota fiscal de entrada correta é o que separa estoque legal de mercadoria apreendida.',
+  setup:s=>({lv:sysLv(s)}),textFn:d=>d.lv>=2?'A fiscalização conferiu suas notas de entrada. Tudo batia com a DUIMP. Nada a pagar.':d.lv===1?'A fiscalização achou divergência entre NF-e de entrada e DUIMP. Multa de R$ 4.000.':'A fiscalização encontrou mercadoria sem nota fiscal de entrada. Multa de R$ 6.000 e operação parada por 30 dias para regularizar.',
+  apply:(s,d)=>{if(d.lv===1){s.cash-=4000;s.m.other+=4000;}if(d.lv===0){s.cash-=6000;s.m.other+=6000;s.flags.parado=s.turn;}}},
+ {id:'bf',w:1,title:'Influencer citou seu produto',text:null,mia:'Demanda extra só vira dinheiro se tiver estoque. Veja a aba Vendas.',
+  setup:s=>{const p=PRODUCTS[randIdx(PRODUCTS.length)];return{pid:p.id,p};},textFn:d=>`Um influencer mostrou ${d.p.name} igual ao seu. Demanda 50% maior este mês.`,
+  apply:(s,d)=>{s.demandMod[d.pid]={f:1.5,until:s.turn};}},
+ {id:'fornecedor',w:2,title:'Fornecedor atrasou a produção',text:'Seu fornecedor mais barato atrasou 30 dias. A carga ainda nem embarcou.',mia:'Preço baixo e confiabilidade baixa andam juntos. Amostra e histórico reduzem isso.',
+  cond:s=>s.ships.some(x=>x.sid==='shenzhen'&&x.eta>s.turn),apply:s=>{const x=s.ships.find(x=>x.sid==='shenzhen'&&x.eta>s.turn);if(x)x.eta++;}},
+ {id:'avaria',w:2,title:'Avaria na carga',text:null,mia:'Seguro de carga custa 0,5% do valor. Sem ele, avaria é prejuízo seu.',
+  cond:s=>s.ships.some(x=>x.eta>=s.turn),setup:s=>{const x=s.ships.filter(x=>x.eta>=s.turn)[0];return{x,p:P(x.pid)};},
+  textFn:d=>d.x.seguro?`Um lote de ${d.p.name} chegou com 10% das caixas amassadas. O seguro cobre a perda.`:`Um lote de ${d.p.name} chegou com 10% das caixas amassadas. Sem seguro, você perde 10% das unidades.`,
+  apply:(s,d)=>{if(!d.x.seguro){d.x.qty=Math.round(d.x.qty*0.9);}}},
+ {id:'demurrage',w:1,title:'Demurrage',text:'Seu contêiner ficou parado no porto além do prazo livre. O armador cobrou R$ 2.500 de demurrage.',mia:'Demurrage é aluguel do contêiner por atraso na devolução. Ter galpão e liberação rápida evita.',
+  cond:s=>s.ships.some(x=>x.modal==='fcl'&&x.eta===s.turn)&&s.wh===0&&sysLv(s)<3,apply:s=>{s.cash-=2500;s.m.other+=2500;s.flags.demurrage=true;}},
+];
+
+/* ===================== ESTADO E UTILITÁRIOS ===================== */
+let S=null, ui={room:'mercado',buy:{pid:'fone',sid:'guangzhou',qty:300,modal:'lcl',lock:false,seguro:true}}, queue=[], modalOpen=false;
+const $=s=>document.querySelector(s);
+const fmt=n=>'R$ '+Math.round(n).toLocaleString('pt-BR');
+const fmtU=n=>'US$ '+Math.round(n).toLocaleString('pt-BR');
+const fmtR=n=>'R$ '+n.toFixed(2).replace('.',',');
+const pct=r=>(Math.round(r*10000)/100).toString().replace('.',',')+'%';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const P=id=>PRODUCTS.find(p=>p.id===id), SUP=id=>SUPPLIERS.find(x=>x.id===id);
+function hash(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return (h>>>0)||1;}
+function rand(){let t=S.rng+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}
+const randIdx=n=>Math.floor(rand()*n);
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=t.getUTCFullYear();const w=Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7);return `${y}-S${String(w).padStart(2,'0')}`;}
+const stk=(s,pid)=>s.stock[pid];
+const lic=(s,pid)=>{s.lic||(s.lic={});return s.lic[pid]||(s.lic[pid]={status:'none',ready:0});};
+const licOk=(s,pid)=>!P(pid).anu||lic(s,pid).status==='ok';
+const rel=(s,sid)=>{s.rel||(s.rel={});return s.rel[sid]||(s.rel[sid]={promise:null,strikes:0,upsetUntil:0,blockedUntil:0,partner:false});};
+const relStatus=(s,sid)=>{const r=rel(s,sid);if(r.blockedUntil>=s.turn)return{k:'blocked',t:`Não atende você até ${monthName(r.blockedUntil)}`};if(r.upsetUntil>=s.turn)return{k:'upset',t:`Chateado: +5% e sem desconto até ${monthName(r.upsetUntil)}`};if(r.promise)return{k:'promise',t:`Acordo: mais ${r.promise.remaining} pedido(s), o próximo até ${monthName(r.promise.deadline)}`};if(r.partner)return{k:'partner',t:'Parceiro: 2% de desconto extra'};return null;};
+function log(s,t){s.log.unshift({turn:s.turn,t});if(s.log.length>60)s.log.pop();}
+const monthName=t=>MONTHS[(t-1)%12];
+const marketPrice=(s,pid)=>{const m=s.priceMod[pid];return P(pid).market*(m&&m.until>=s.turn?m.f:1);};
+const whCap=s=>WAREHOUSES[s.wh].cap+(filialOk(s)?FILIAL.cap:0);
+const stockM3=s=>PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*p.m3,0);
+const radarUsed=s=>s.radar.used;
+
+function newGame(mode,nick,avatar,seg){
+  applySegment(seg||'eletronicos');ui.buy={pid:PRODUCTS[0].id,sid:'guangzhou',qty:300,modal:'lcl',lock:false,seguro:true,insp:true};
+  const seedStr=mode==='semanal'?'semanal:'+isoWeek(new Date())+':'+SEG.id:'sandbox:'+Date.now();
+  S={mode,nick:nick||'Importador',seedStr,rng:hash(seedStr),turn:1,cash:START_CASH,dollar:5.20,dHist:[5.20],
+     radar:{level:0,used:0},wh:0,sys:0,seg:SEG.id,lic:{},up:{maino:false,buyer:false},tax:{iiExtra:0,pc:0.1175,icms:0.18},
+     stock:Object.fromEntries(PRODUCTS.map(p=>[p.id,{qty:0,avg:0,price:p.market,channel:'ambos',ncm:null,ncmOk:null}])),
+     ships:[],recv:[],loans:{giro:0,finimp:0},imports:0,negMonths:0,log:[],hist:[],priceMod:{},demandMod:{},flags:{},
+     m:{rev:0,cmv:0,fees:0,other:0,units:0,landed:0,icmsTTD:0,mkt:0,unmet:0,demandTot:0},filial:{status:'none',ready:0},mkt:0,brand:1,xpRev:0,unitsTot:0,marcos:[],lvl:1,snap:null,cmds:[],replaying:false,cf:{},cashMonthStart:START_CASH,stats:{fcl:0,vermelho:0,lockedBeforeSpike:false,galpaoNunca:true,mainoTurn:null},over:false};
+  S.avatar=avatar||0;for(let i=0;i<3;i++)rand();
+  log(S,`Empresa aberta. ${fmt(START_CASH)} em caixa, Radar ${RADAR[0].name}.`);
+  ui.room='mercado';walk=null;
+  renderGame();
+  openModal({icon:'ship',title:'Bem-vindo à sua importadora',html:`<p>Você tem <b>${fmt(START_CASH)}</b>, um escritório alugado e um Radar na modalidade <b>Expressa</b> (até US$ 50 mil CIF por semestre). Em 12 meses, construa patrimônio ou quebre tentando.</p>
+   <p>Segmento <b>${SEG.name}</b> (${SEG.level}): ${SEG.desc}</p><p>Cada mês: leia o <b>Mercado</b>, <b>Compre</b> de um fornecedor, defina <b>Vendas</b>, <b>Invista</b> e feche o mês.</p><p>Você ainda <b>não tem sistema de gestão</b>: sem NF-e, o marketplace fica bloqueado e a fiscalização pode parar a operação. Passe na <b>Diretoria</b>.</p>
+   ${mia(PRODUCTS.some(p=>p.anu)?'Antes de comprar, veja quais produtos exigem anuência e solicite já no primeiro mês: o órgão leva de 1 a 2 meses e o embarque só pode sair depois. Enquanto isso, nunca gaste tudo: saldo e tributos só vêm na chegada.':'Comece pequeno. Um pedido LCL chega em 2 meses. Nunca gaste tudo no primeiro mês: o saldo do pedido e os tributos só vêm na chegada.')}
+   <p class="small muted">Desafio da semana ${seedStr.split(':')[1]}: todo mundo que jogar ${SEG.name} nesta semana enfrenta o mesmo dólar, a mesma demanda e os mesmos eventos. Seu placar é o print que você compartilha no fim.</p>`,
+   buttons:[{label:'Começar',cls:'primary'}]});
+}
+
+/* ===================== CUSTO DE NACIONALIZAÇÃO ===================== */
+function freightBRL(modal,m3){const M=MODAIS[modal];return M.fixed+M.perM3*m3;}
+function cascade(s,sh,rate,canal){
+  const M=MODAIS[sh.modal],t=s.tax;
+  const fobBRL=sh.fobUSD*rate, frete=sh.freight, seguro=sh.seguro?Math.round(fobBRL*0.005):0;
+  const capatazia=M.capatazia;
+  const va=fobBRL+frete+seguro+capatazia;
+  const pr=P(sh.pid), iiRate=pr.ii+t.iiExtra;
+  const ii=va*iiRate, ipi=(va+ii)*pr.ipi, pc=va*t.pc;
+  const afrmm=M.afrmm?frete*0.08:0, siscomex=sh.modal==='courier'?0:154.23;
+  const armBase=sh.modal==='courier'?0:800, armExtra=canal==='amarelo'?1200:canal==='vermelho'?3000:0;
+  const armazenagem=(armBase+armExtra*(sysLv(s)>=3?0.5:1))*(s.flags.portoX2===s.turn&&sysLv(s)<3?2:1);
+  const ttd=filialOk(s);const baseIcms=(va+ii+ipi+pc+afrmm+siscomex)/(1-t.icms), icms=ttd?0:baseIcms*t.icms;
+  const despachante=sh.modal==='courier'?500:(hasMaino(s)?1000:1500), freteInt=sh.modal==='courier'?0:600, inspecao=sh.insp?INSP_COST:0;
+  const multa=canal==='vermelho'&&sh.ncmOk===false?5000:0;
+  const rows=[['Mercadoria (FOB em R$)',fobBRL],['Frete internacional',frete],['Seguro de carga',seguro],['Capatazia / THC (integra o VA, STJ Tema 1014)',capatazia],['Valor aduaneiro',va,'sub'],
+   [`II ${pct(iiRate)}`,ii],[`IPI ${pct(pr.ipi)}`,ipi],['PIS/COFINS-importação 11,75%',pc],[ttd?'ICMS diferido no desembaraço (TTD 409 SC)':'ICMS 18% SP (por dentro)',icms,ttd?'sub':undefined],
+   ['AFRMM 8% do frete marítimo',afrmm],['Taxa Siscomex (DUIMP + 1 adição)',siscomex],['Armazenagem',armazenagem],['Despachante',despachante],['Frete interno',freteInt],['Inspeção pré-embarque',inspecao],['Multa por declaração inexata (NCM)',multa]];
+  const total=fobBRL+frete+seguro+ii+ipi+pc+icms+afrmm+siscomex+capatazia+armazenagem+despachante+freteInt+multa+inspecao;
+  return {rows:rows.filter(r=>r[1]>0||r[2]).map(r=>r[2]===undefined?[r[0],r[1]]:r),total,va,taxes:ii+ipi+pc+icms+afrmm+siscomex,fobBRL};
+}
+function cascadeHTML(c,qty){
+  return `<div class="tbl"><table class="cascade">${c.rows.map(r=>`<tr${r[2]?' style="font-weight:600"':''}><td>${r[0]}</td><td class="n">${fmt(r[1])}</td></tr>`).join('')}
+  <tr class="total"><td>Custo nacionalizado</td><td class="n">${fmt(c.total)}</td></tr>
+  <tr class="total"><td>Por unidade (${qty} un.)</td><td class="n">${fmtR(c.total/qty)}</td></tr></table></div>
+  <p class="small muted">Comprou por ${fmt(c.fobBRL)}. Custou ${fmt(c.total)} pra ter em estoque: <b>${Math.round((c.total/c.fobBRL-1)*100)}% acima do FOB</b>.</p>`;
+}
+
+/* ===================== FECHAMENTO DO MÊS ===================== */
+function demandFor(s,pid,price,channel,noise){
+  const p=P(pid),mk=marketPrice(s,pid),m=s.demandMod[pid];
+  const f={base:p.base,season:SEASON[(s.turn-1)%12],event:(m&&m.until>=s.turn?m.f:1),noise,price:Math.pow(mk/price,2.2),brand:brand(s),mkt:1+mktLift(s.mkt||0),rep:(level(s).n>=4?1.1:1),b2bPrice:Math.min(1,Math.pow(0.85*mk/price,2)),market:mk};
+  const D=f.base*f.season*f.event*f.noise*f.price*f.brand*f.mkt*f.rep;
+  const mp=D*0.55, b2b=D*0.8*f.b2bPrice;
+  const mpOk=sysLv(s)>=1;const b2bF=mpOk?1:0.5; // sem NF-e só o comprador informal aceita
+  f.mpOk=mpOk;f.D=D;
+  if(channel==='marketplace')return{mp:mpOk?mp:0,b2b:0,f};if(channel==='b2b')return{mp:0,b2b:b2b*b2bF,f};return{mp:mpOk?mp:0,b2b:b2b*b2bF,f};
+}
+function closeMonth(){
+  const s=S;statPrev=statSnapshot(s);s.snap=null;s.cmds=[];const report={turn:s.turn,month:monthName(s.turn),cashStart:(s.cashMonthStart!=null?s.cashMonthStart:s.cash),arrivals:[],sales:[],events:[]};
+  // 1. vendas
+  const parado=s.flags.parado===s.turn;
+  let demandTot=0,unmet=0;
+  for(const p of PRODUCTS){const st=stk(s,p.id);if(parado)continue;
+    const noise=0.9+rand()*0.2;const d=demandFor(s,p.id,st.price,st.channel,noise);
+    const ativo=st.qty>0||(st.lastStock!=null&&s.turn-st.lastStock<=2);if(st.qty>0)st.lastStock=s.turn;
+    if(ativo){demandTot+=Math.round(d.mp)+Math.round(d.b2b);}
+    const dem={mp:Math.round(d.mp),b2b:Math.round(d.b2b)};
+    if(st.qty<=0){if(ativo){unmet+=dem.mp+dem.b2b;report.sales.push({name:p.name,pid:p.id,qMp:0,qB:0,price:st.price,left:0,stockStart:0,dem,f:d.f,channel:st.channel,unmet:dem.mp+dem.b2b});}continue;}
+    let left=st.qty;const stockStart=st.qty;const qMp=Math.min(left,dem.mp);left-=qMp;const qB=Math.min(left,dem.b2b);left-=qB;
+    const un=Math.max(0,dem.mp+dem.b2b-qMp-qB);unmet+=un;
+    if(qMp+qB===0){report.sales.push({name:p.name,pid:p.id,qMp:0,qB:0,price:st.price,left,stockStart,dem,f:d.f,channel:st.channel,unmet:un});continue;}
+    const revMp=qMp*st.price,fee=revMp*0.18,revB=qB*st.price;
+    s.cash+=revMp-fee;cfAdd('vendasVista',revMp-fee);if(revB>0)s.recv.push({due:s.turn+2,amount:revB,p:p.name});
+    const cmv=(qMp+qB)*st.avg;st.qty=left;
+    s.m.rev+=revMp+revB;s.m.fees+=fee;s.m.cmv+=cmv;s.m.units+=qMp+qB;
+    if(filialOk(s)){const ttdCost=Math.round((revMp+revB)*FILIAL.icmsEfetivo);s.m.icmsTTD=(s.m.icmsTTD||0)+ttdCost;s.cash-=ttdCost;}
+    report.sales.push({name:p.name,pid:p.id,qMp,qB,price:st.price,left,stockStart,dem,f:d.f,channel:st.channel,unmet:un});
+  }
+  // 1b. confiança da marca: demanda gerada e não atendida decepciona
+  const ratio=demandTot>0?unmet/demandTot:0;const brandBefore=brand(s);
+  if(!parado&&demandTot>0){if(ratio>0.2){s.brand=Math.max(0.6,brand(s)-Math.min(0.1,ratio*0.2));}else if(ratio<0.1){s.brand=Math.min(1,brand(s)+0.1);}}
+  s.m.unmet=unmet;s.m.demandTot=demandTot;s.m.mkt=s.mkt||0;report.brandBefore=brandBefore;report.brandAfter=brand(s);report.ratio=ratio;
+  if(unmet>0&&ratio>0.2)log(s,`${unmet} clientes procuraram e não encontraram estoque (${Math.round(ratio*100)}% da demanda). Confiança da marca caiu para ${Math.round(brand(s)*100)}%.`);
+  // 2. recebíveis
+  s.recv=s.recv.filter(r=>{if(r.due<=s.turn){if(sysLv(s)<4&&rand()<0.15){const perda=Math.round(r.amount*0.25);log(s,`Inadimplência: ${fmt(perda)} de ${r.p} (25% da carteira do mês) não foi pago.`);s.m.other+=perda;s.cash+=r.amount-perda;cfAdd('recebidos',r.amount-perda);}else{s.cash+=r.amount;cfAdd('recebidos',r.amount);}return false;}return true;});
+  // 3. chegadas
+  let arrivalsN=0,landedThisMonth=0;
+  for(const sh of s.ships.filter(x=>x.eta<=s.turn)){
+    const sup=SUP(sh.sid);
+    if(sh.scam){sh.done=true;s.m.other+=sh.sinalBRL||0;report.arrivals.push({sh,scam:true});log(s,`Golpe: ${sup.name} sumiu com o sinal de ${fmt(sh.sinalBRL||0)}. A carga de ${sh.qty} ${P(sh.pid).name} nunca embarcou.`);const r=rel(s,sup.id);r.blockedUntil=99;continue;}
+    if(!licOk(s,sh.pid)){sh.eta=s.turn+1;sh.heldLic=true;s.cash-=3000;s.m.other+=3000;report.arrivals.push({sh,heldLic:true});log(s,`Carga de ${P(sh.pid).name} retida na alfândega: sem ${P(sh.pid).anu.org}. Armazenagem de R$ 3.000.`);continue;}
+    if(!sh.canal){
+      let pV=0.10+(SEG.id==='beleza'?0.05:0),pA=0.18;if(sh.ncmOk===false)pV+=0.15;if(s.imports===0)pA+=0.10;if(hasMaino(s)){pV*=0.5;pA*=0.7;}if(sysLv(s)>=4)pA*=0.5;
+      const r=rand();sh.canal=r<pV?'vermelho':r<pV+pA?'amarelo':'verde';
+      if(sh.canal==='vermelho'){s.stats.vermelho++;if(!sh.held){sh.held=true;sh.eta=s.turn+1;report.arrivals.push({sh,held:true});continue;}}
+    }
+    if(!sh.insp&&!sh.incident&&rand()<riskNoInsp(sup)){const r=rand();let perc,tipo,desc;
+      if(r<0.45){perc=0.12+rand()*0.13;tipo='defeito';desc='lote com defeito (acabamento, bateria, costura)';}else if(r<0.8){perc=0.3;tipo='especificacao';desc='produto fora da especificação (modelo, cor ou voltagem errados), sem valor de revenda';}else{perc=0.15;tipo='curto';desc='quantidade curta: caixas a menos do que a invoice';}
+      const perdidas=Math.round(sh.qty*perc);sh.qty-=perdidas;const brandHit=tipo==='defeito'?0.08:tipo==='especificacao'?0.04:0;if(brandHit){s.brand=Math.max(0.6,brand(s)-brandHit);report.brandQuality=(report.brandQuality||0)+brandHit;}sh.incident={tipo,perdidas,desc,brandHit};log(s,`Sem inspeção: ${desc}. ${perdidas} ${P(sh.pid).name} perdidas (${sup.name}).${brandHit?` Devoluções e avaliações ruins: confiança da marca caiu ${Math.round(brandHit*100)} pontos, para ${Math.round(brand(s)*100)}%.`:''}`);}
+    const rate=sh.lockRate||s.dollar;const c=cascade(s,sh,s.dollar,sh.canal);
+    const balance=sh.fobUSD*(1-sup.deposit)*rate;const outlay=balance+(c.total-c.fobBRL);
+    s.cash-=outlay;cfAdd('chegadas',outlay);s.m.landed+=c.total;landedThisMonth+=c.total;
+    const st=stk(s,sh.pid);const newQty=st.qty+sh.qty;st.avg=(st.qty*st.avg+c.total)/newQty;st.qty=newQty;
+    if(sh.canal==='vermelho'&&sh.ncmOk===false){st.ncmOk=true;st.ncm=P(sh.pid).ncm.find(n=>n.ok).c;}
+    s.imports++;arrivalsN++;sh.done=true;
+    report.arrivals.push({sh,c,balance,rate});
+    log(s,`Chegou: ${sh.qty} ${P(sh.pid).name} via ${MODAIS[sh.modal].name.split(' (')[0]}, canal ${sh.canal}. Custo unitário ${fmtR(c.total/sh.qty)}.`);
+  }
+  s.ships=s.ships.filter(x=>!x.done);
+  // 4. custos fixos e financeiros
+  let fixed=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const over=Math.max(0,stockM3(s)-whCap(s));const pl=Math.round(over*THREEPL);fixed+=pl;
+  const interest=Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE);
+  let nfe=0;if(sysLv(s)===1&&arrivalsN>0&&rand()<0.35){nfe=Math.max(1500,Math.round(landedThisMonth*0.03));log(s,`Erro na NF-e de importação: CFOP e base de ICMS divergentes. ${fmt(nfe)} de retrabalho e multa.`);}
+  if(sysLv(s)===0&&s.m.units>0&&rand()<0.2){nfe=8000;s.flags.parado=s.turn+1;log(s,'Fiscalização: vendas sem nota fiscal. Multa de R$ 8.000 e operação parada por 30 dias para regularizar.');report.fiscal=true;}
+  s.cash-=fixed+interest+nfe;
+  const m=s.m;m.icmsTTD=m.icmsTTD||0;const margin=m.rev-m.cmv-m.fees-m.icmsTTD;const result=margin-fixed-interest-nfe-m.other;
+  report.m={...m,fixed,pl,interest,nfe,margin,result,cashEnd:s.cash,over};
+  {const c=s.cf||{};const ent=(c.vendasVista||0)+(c.recebidos||0)+(c.credito>0?c.credito:0)+(c.antecip||0);const sai=(c.chegadas||0)+(c.sinais||0)+(c.invest||0)+fixed+interest+(m.icmsTTD||0)+(c.credito<0?-c.credito:0);const outros=(s.cash-report.cashStart)-(ent-sai);report.cf={vendasVista:c.vendasVista||0,recebidos:c.recebidos||0,credito:c.credito||0,antecip:c.antecip||0,chegadas:c.chegadas||0,sinais:c.sinais||0,invest:c.invest||0,fixos:fixed,juros:interest,ttd:m.icmsTTD||0,outros:Math.round(outros)};s.cf={};}
+  s.xpRev=(s.xpRev||0)+m.rev;s.unitsTot=(s.unitsTot||0)+m.units;
+  const novos=MARCOS.filter(mc=>!(s.marcos||[]).includes(mc.id)&&mc.cond(s));if(novos.length){s.marcos=(s.marcos||[]).concat(novos.map(mc=>mc.id));report.marcos=novos;novos.forEach(mc=>log(s,`Marco alcançado: ${mc.name}.`));}
+  const Lnow=level(s);if(Lnow.n>(s.lvl||1)){s.lvl=Lnow.n;report.levelUp=Lnow;log(s,`Subiu de nível: ${Lnow.name}. ${Lnow.perk}`);if(Lnow.n>=5&&s.radar.level<2){s.radar.level=2;log(s,'Radar Ilimitada concedido.');}}
+  s.hist.push(report);s.cashMonthStart=s.cash;
+  // 5. caixa negativo: o banco cobre com capital de giro até o limite; falência só além dele
+  if(s.cash<0){const room=GIRO_MAX-s.loans.giro;const take=Math.min(-s.cash,Math.max(0,room));if(take>0){s.loans.giro+=take;s.cash+=take;cfAdd('credito',take);report.autoGiro=take;log(s,`Caixa negativo: o banco cobriu ${fmt(take)} com capital de giro automático (juros de ${(giroRate(s)*100).toFixed(1)}% ao mês).`);}}
+  if(s.cash<0){s.negMonths++;}else s.negMonths=0;
+  s.m={rev:0,cmv:0,fees:0,other:0,units:0,landed:0,icmsTTD:0,mkt:0,unmet:0,demandTot:0};
+  // 6. novo mês
+  const lastTurn=s.turn>=12;const breaches=[],licEvents=[];
+  if(!lastTurn){
+    s.turn++;
+    if(s.filial&&s.filial.status==='setup'&&s.filial.ready<=s.turn){s.filial.status='ok';log(s,'Filial em Santa Catarina operando: ICMS da importação diferido (TTD 409) e mais 80 m³ de galpão.');queue.push({icon:'office',title:'Filial de Santa Catarina em operação',html:`<p>Inscrição estadual ativa e TTD 409 concedido. A partir de agora o ICMS da importação é <b>diferido no desembaraço</b> e você paga uma carga efetiva de <b>2,6% sobre as vendas</b>. A filial soma <b>80 m³</b> de armazenagem.</p>${mia('Compare a cascata na sala de compras: o ICMS por dentro saiu do custo de nacionalização. É por isso que tanta importadora opera por Itajaí e Navegantes.')}`,buttons:[{label:'Ok'}]});}
+    for(const p of PRODUCTS){const l=lic(s,p.id);if(p.anu&&l.status==='pending'&&l.ready<=s.turn){if(rand()<p.anu.risk){l.ready=s.turn+1;licEvents.push({p,kind:'exigencia'});log(s,`${p.anu.org} fez exigência no processo de ${p.name}: mais um mês.`);}else{l.status='ok';licEvents.push({p,kind:'ok'});log(s,`${p.anu.org} liberou ${p.name}. Pode embarcar.`);}}}
+    if(SEG.validade){for(const p of PRODUCTS){const st=stk(s,p.id);const v=Math.floor(st.qty*SEG.validade);if(v>0){st.qty-=v;s.m.other+=Math.round(v*st.avg);log(s,`Validade: ${v} ${p.name} vencidas e descartadas.`);}}}
+    for(const sup of SUPPLIERS){const r=rel(s,sup.id);if(r.promise&&r.promise.deadline<s.turn){r.promise=null;r.strikes++;
+      if(r.strikes===1){r.upsetUntil=s.turn+2;breaches.push({sup,kind:'upset'});log(s,`${sup.name} cobrou a promessa de recorrência: preço 5% maior e sem desconto até ${monthName(r.upsetUntil)}.`);}
+      else{r.blockedUntil=s.turn+2;r.partner=false;breaches.push({sup,kind:'blocked'});log(s,`${sup.name} parou de atender você até ${monthName(r.blockedUntil)}: segunda promessa descumprida.`);}}}
+    if(s.turn===7){s.radar.used=0;log(s,'Novo semestre: limite do Radar renovado.');}
+    if(s.flags.aliqUntil&&s.turn>s.flags.aliqUntil){s.tax.iiExtra=0;delete s.flags.aliqUntil;log(s,'Alíquota do II voltou ao normal.');}
+    const prev=s.dollar;const g=(rand()+rand()+rand()-1.5)/1.5;s.dollar=Math.max(3.8,s.dollar*(1+0.003+g*0.035));report.dollarPrev=prev;report.dollarNext=s.dollar;
+    s.dHist.push(s.dollar);
+    if(s.dollar/prev>1.05&&s.ships.some(x=>x.lockRate))s.stats.lockedBeforeSpike=true;
+  }
+  // modais
+  queueArrivals(report);queueReport(report);
+  if(report.marcos){queue.push({icon:'coin',title:report.marcos.length>1?'Marcos alcançados':'Marco alcançado',html:`<div class="selos">${report.marcos.map(mc=>`<span class="selo">${mc.name}</span>`).join('')}</div><p class="small muted" style="margin-top:8px">Cada marco vale ${fmt(MARCO_XP)} de experiência para o nível da empresa.</p>${mia('Marco é o que separa quem está testando de quem está construindo. Veja o próximo na Diretoria.')}`,buttons:[{label:'Ok'}]});}
+  if(report.levelUp){const L=report.levelUp;queue.push({icon:'office',title:`Nível ${L.n}: ${L.name}`,html:`<p>Sua importadora cresceu. <b>Vantagem desbloqueada:</b> ${L.perk}</p>${nextLevel(s)?`<p class="small muted">Próximo nível: ${nextLevel(s).name}, com ${fmt(nextLevel(s).xp)} de experiência (faturamento acumulado + marcos).</p>`:'<p class="small muted">Nível máximo. Agora é só ampliar o império.</p>'}${mia(L.n>=4?'Trading com reputação vende mais caro e compra mais barato. Use a vantagem pra escalar sem perder a mão no caixa.':'Cada nível abre uma vantagem concreta. Fature e cumpra marcos pra chegar ao próximo.')}`,buttons:[{label:'Continuar',cls:'primary'}]});}
+  for(const e of licEvents){queue.push(e.kind==='ok'?{icon:'officer',title:`${e.p.anu.org} liberou: ${e.p.name}`,html:`<p>${e.p.anu.label} concluída. Você já pode embarcar ${e.p.name}.</p>${mia('Anuência é pré-embarque. Mercadoria que chega sem ela fica retida ou volta. Por isso o planejamento começa meses antes do pedido.')}`,buttons:[{label:'Ok'}]}:{icon:'officer',title:`${e.p.anu.org} fez exigência: ${e.p.name}`,html:`<p>O órgão pediu documentação complementar (rotulagem, laudos ou dossiê técnico). O processo atrasa um mês: previsão agora para <b>${monthName(lic(s,e.p.id).ready)}</b>.</p>${mia('Exigência é rotina em órgão anuente. Quem monta o dossiê certo da primeira vez economiza um mês de venda.')}`,buttons:[{label:'Ok'}]});}
+  for(const b of breaches){const i=SUPPLIERS.indexOf(b.sup)+1;queue.push(b.kind==='upset'?{icon:'sup'+i,title:`${b.sup.flag} ${b.sup.name} cobra a promessa`,html:`<div class="msg"><div class="orig">${b.sup.country==='Taiwan'?'您好，上次說好的後續訂單沒有收到。價格要重新報價。':'老板，说好的每月订单呢？下次价格要重新算。'}</div><div class="tr">Tradução automática: ${b.sup.country==='Taiwan'?'Olá, o pedido seguinte que combinamos não chegou. O preço vai ter de ser recotado.':'Chefe, e o pedido mensal que combinamos? Da próxima vez o preço vai ser recalculado.'}</div></div><p>Você fechou preço de volume prometendo recorrência e não voltou no prazo. Até <b>${monthName(rel(s,b.sup.id).upsetUntil)}</b> ele cobra <b>5% a mais</b> e não dá desconto nenhum.</p>${mia('Na China, reputação vale mais que contrato. Prometa só o que o seu caixa aguenta. Um pedido pequeno no prazo mantém o acordo vivo.')}`,buttons:[{label:'Entendi'}]}
+   :{icon:'sup'+i,title:`${b.sup.flag} ${b.sup.name} parou de te atender`,html:`<p>Segunda promessa descumprida. ${b.sup.name} não aceita pedidos seus até <b>${monthName(rel(s,b.sup.id).blockedUntil)}</b>. Se era seu melhor preço, agora você paga mais caro em outro fornecedor ou espera.</p>${mia('Fornecedor bom é ativo da empresa. Perder um por descaso custa mais que qualquer desconto que ele deu.')}`,buttons:[{label:'Entendi'}]});}
+  if(s.negMonths>=2){queueGameOver(true);}
+  else if(lastTurn){queueGameOver(false);}
+  else{queueEvent();}
+  renderGame();showNext();
+}
+function queueArrivals(report){
+  for(const a of report.arrivals){const p=P(a.sh.pid),sup=SUP(a.sh.sid);
+    if(a.scam){queue.push({icon:'alerta',title:`Golpe: ${sup.name} sumiu com o sinal`,html:`<p>O fornecedor parou de responder depois do sinal de <b>${fmt(a.sh.sinalBRL||0)}</b>. A carga de ${a.sh.qty} ${p.name} nunca embarcou e o dinheiro não volta.</p>${mia(a.sh.insp?'Mesmo com inspeção contratada, a fábrica não existia quando o inspetor chegou: o sinal já tinha ido. Pedir amostra e auditoria antes do sinal reduz isso, mas fornecedor muito barato é risco por definição.':'Fornecedor barato, sem histórico e sem inspeção é a receita clássica. Amostra, inspeção e pagamento 30/70 custam pouco perto de um sinal perdido.')}`,buttons:[{label:'Entendi'}]});continue;}
+    if(a.heldLic){queue.push({icon:'officer',title:`Carga retida: ${p.name} sem ${p.anu.org}`,html:`<p>Sua carga de <b>${a.sh.qty} ${p.name}</b> chegou sem ${p.anu.label.toLowerCase()}. A Receita retém até a regularização: mais um mês e <b>R$ 3.000</b> de armazenagem.</p>${mia('Certificação não é licença de importação, mas sem ela a mercadoria não sai da zona primária. Solicite assim que decidir o produto.')}`,buttons:[{label:'Entendi'}]});continue;}
+    if(a.held){queue.push({icon:'officer',title:`Canal vermelho: ${p.name}`,html:`<p><span class="pill vermelho">canal vermelho</span> A Receita selecionou sua carga de <b>${a.sh.qty} ${p.name}</b> para conferência física. Liberação só no mês que vem, com armazenagem extra${a.sh.ncmOk===false?' e <b>reclassificação com multa</b>':''}.</p>${mia(a.sh.ncmOk===false?'A NCM declarada não bate com o produto. A Receita reclassifica de ofício e aplica multa por declaração inexata (a antiga multa de 1% do valor aduaneiro foi revogada pela LC 227/2026). Com um sistema especializado, a classificação é conferida antes do registro da DUIMP.':'Sem histórico ou com documentação fraca, a chance de vermelho sobe. Nada errado na NCM: só paciência e armazenagem.')}`,buttons:[{label:'Entendi'}]});continue;}
+    queue.push({icon:(a.sh.modal==='fcl'||a.sh.modal==='lcl')?'ship':'plane',title:`Chegou: ${a.sh.qty} ${p.name}`,html:`<p><span class="pill ${a.sh.canal}">canal ${a.sh.canal}</span> <span class="pill info">${MODAIS[a.sh.modal].name}</span> <span class="pill info">${sup.flag} ${sup.name}</span></p>
+      <p class="small muted">Saldo ao fornecedor: ${fmtU(a.sh.fobUSD*(1-sup.deposit))} a ${fmtR(a.rate)}${a.sh.lockRate?' (câmbio travado)':' (câmbio do dia)'} = ${fmt(a.balance)}.</p>${a.sh.incident?`<p class="bad"><b>Sem inspeção:</b> ${a.sh.incident.desc}. <b>${a.sh.incident.perdidas} unidades perdidas</b>, e você pagou por todas: o custo unitário subiu.${a.sh.incident.brandHit?` Parte do lote chegou ao cliente antes de você perceber: devoluções e avaliações ruins derrubaram a <b>confiança da marca em ${Math.round(a.sh.incident.brandHit*100)} pontos</b> (agora ${Math.round(brand(S)*100)}%).`:''}</p>`:a.sh.insp?'<p class="small good">Inspeção pré-embarque aprovou o lote: quantidade, modelo e qualidade conferidos antes de embarcar.</p>':''}
+      ${cascadeHTML(a.c,a.sh.qty)}
+      ${mia(a.sh.canal==='verde'?'Verde: liberou sem conferência. Repare quanto ICMS e II pesam: o custo real é o que define seu preço mínimo.':a.sh.canal==='amarelo'?'Amarelo: a Receita pediu documentos. Custou armazenagem e dias. Documentação completa antes da chegada reduz isso.':'Vermelho liberado. Custou armazenagem alta e, se a NCM estava errada, reclassificação com multa. Já corrigi a classificação no seu cadastro.')}`,buttons:[{label:'Ok'}]});
+  }
+}
+const fx=v=>(v>=0.995&&v<=1.005)?'1,00':v.toFixed(2).replace('.',',');
+function explainMonth(r){const s=S;if(!r||!r.sales||!r.sales.length)return '<p class="small muted">Nenhum produto ativo neste mês: nada foi vendido nem procurado.</p>';
+  const blocks=r.sales.map(x=>{const f=x.f||{};const dem=x.dem||{mp:0,b2b:0};const demTot=dem.mp+dem.b2b;const sold=x.qMp+x.qB;const diag=[];
+    const pr=f.market?x.price/f.market:1;
+    if(pr>1.05)diag.push(`Preço <b>${Math.round((pr-1)*100)}% acima</b> do mercado: demanda ×${fx(f.price)}.`);else if(pr<0.95)diag.push(`Preço <b>${Math.round((1-pr)*100)}% abaixo</b> do mercado: demanda ×${fx(f.price)}, mas margem menor.`);
+    if(f.mkt>1.005)diag.push(`Marketing: demanda ×${fx(f.mkt)}.`);
+    if(f.brand<0.995)diag.push(`Confiança da marca em ${Math.round(f.brand*100)}%: demanda ×${fx(f.brand)}.`);
+    if(f.event&&f.event!==1)diag.push(`Evento do mês: demanda ×${fx(f.event)}.`);
+    if(f.season&&Math.abs(f.season-1)>0.04)diag.push(`Sazonalidade: ×${fx(f.season)}.`);
+    if(f.rep>1.005)diag.push(`Reputação (nível Trading): ×${fx(f.rep)}.`);
+    if(x.channel!=='b2b'&&f.mpOk===false)diag.push('<span class="warn">Marketplace bloqueado: sem sistema de gestão não há NF-e.</span>');
+    if(x.channel!=='marketplace'&&f.b2bPrice<0.6)diag.push(`B2B comprou pouco (×${fx(f.b2bPrice)}): atacado só compra bem até 85% do preço de mercado.`);
+    if(x.stockStart===0)diag.push(`<span class="bad">Sem estoque: ${demTot} clientes procuraram e não encontraram.</span>`);
+    else if(x.unmet>0)diag.push(`<span class="bad">Estoque acabou: ${x.unmet} clientes (${Math.round(x.unmet/Math.max(1,demTot)*100)}% da demanda) saíram sem comprar.</span>`);
+    else if(x.left>0&&demTot>0)diag.push(`Sobraram ${x.left} unidades: demanda abaixo do estoque${pr>1.05?' (preço alto)':''}.`);
+    return `<div class="explain"><div class="row" style="justify-content:space-between;align-items:baseline"><b>${spr(x.pid||'box',2)} ${x.name}</b><span class="small muted">${fmt(x.price)} · ${x.channel==='ambos'?'marketplace + B2B':x.channel}</span></div>
+      <div class="small" style="margin-top:4px">Demanda <b>${demTot}</b> = base ${f.base||'?'} × sazonalidade ${fx(f.season||1)} × preço ${fx(f.price||1)} × marketing ${fx(f.mkt||1)} × confiança ${fx(f.brand||1)}${f.event&&f.event!==1?' × evento '+fx(f.event):''}${f.rep>1.005?' × reputação '+fx(f.rep):''} × acaso ${fx(f.noise||1)} → marketplace ${dem.mp} · B2B ${dem.b2b}</div>
+      <div class="small" style="margin-top:2px">Estoque <b>${x.stockStart}</b> → vendeu <b>${sold}</b> (${x.qMp} marketplace à vista, ${x.qB} B2B em 60 dias) → ${x.unmet>0?`<b class="bad">${x.unmet} sem atendimento</b>`:`sobraram <b>${x.left}</b>`}</div>
+      ${diag.length?`<ul class="small" style="margin:6px 0 0 18px;padding:0">${diag.map(t=>`<li>${t}</li>`).join('')}</ul>`:''}</div>`;}).join('');
+  const dol=r.dollarPrev?`<p class="small muted" style="margin-top:6px">Dólar: ${fmtR(r.dollarPrev)} → ${fmtR(r.dollarNext)} (${r.dollarNext>=r.dollarPrev?'+':''}${((r.dollarNext/r.dollarPrev-1)*100).toFixed(1).replace('.',',')}%).</p>`:'';
+  return `<p class="small muted">Demanda = base × sazonalidade × preço × marketing × confiança × eventos. O que você controla: preço, marketing, estoque.</p>${blocks}${dol}`;}
+function queueReport(r){const m=r.m;const cls=v=>v<0?'bad':'good';
+  queue.push({icon:'coin',title:`Fechamento de ${r.month} (mês ${r.turn})`,html:`
+   <div class="kpis"><div class="kpi"><b>${fmt(m.rev)}</b><span>Receita</span></div><div class="kpi"><b class="${cls(m.result)}">${fmt(m.result)}</b><span>Resultado</span></div><div class="kpi"><b class="${cls(m.cashEnd)}">${fmt(m.cashEnd)}</b><span>Caixa final</span></div></div>
+   <h3 style="margin-top:10px">O que aconteceu com a demanda</h3>${explainMonth(r)}
+   <h3 style="margin-top:10px">Resultado do mês</h3><div class="tbl"><table>
+   ${r.sales.map(x=>`<tr><td>Vendas ${x.name}</td><td class="n">${x.qMp} mkt + ${x.qB} B2B a ${fmt(x.price)}</td></tr>`).join('')}
+   <tr><td>Receita bruta</td><td class="n">${fmt(m.rev)}</td></tr><tr><td>Custo da mercadoria vendida</td><td class="n">-${fmt(m.cmv)}</td></tr><tr><td>Comissão do marketplace</td><td class="n">-${fmt(m.fees)}</td></tr>${m.icmsTTD?`<tr><td>ICMS efetivo na saída (TTD 409, 2,6%)</td><td class="n">-${fmt(m.icmsTTD)}</td></tr>`:''}
+   <tr style="font-weight:600"><td>Margem bruta</td><td class="n">${fmt(m.margin)}</td></tr>
+   <tr><td>Custos fixos (escritório, galpão, equipe, sistema${m.pl?', 3PL '+fmt(m.pl):''}${m.mkt?', marketing '+fmt(m.mkt):''})</td><td class="n">-${fmt(m.fixed)}</td></tr>
+   ${r.brandQuality?`<tr><td class="bad">Qualidade ruim no lote: devoluções e avaliações negativas derrubaram a confiança da marca em ${Math.round(r.brandQuality*100)} pontos</td><td class="n"></td></tr>`:''}${m.unmet>0?`<tr><td class="${r.ratio>0.2?'bad':'muted'}">Demanda não atendida: ${m.unmet} de ${m.demandTot} clientes (${Math.round(r.ratio*100)}%)${r.brandAfter<r.brandBefore?' · confiança da marca caiu para '+Math.round(r.brandAfter*100)+'%':''}</td><td class="n"></td></tr>`:(r.brandAfter>r.brandBefore?`<tr><td class="good">Demanda atendida: confiança da marca subiu para ${Math.round(r.brandAfter*100)}%</td><td class="n"></td></tr>`:'')}
+   <tr><td>Juros</td><td class="n">-${fmt(m.interest)}</td></tr>${m.nfe?`<tr><td class="bad">${r.fiscal?'Fiscalização: venda sem nota (multa, operação parada 30 dias)':'Erro de NF-e de importação'}</td><td class="n bad">-${fmt(m.nfe)}</td></tr>`:''}${m.other?`<tr><td>Multas, perdas e inadimplência</td><td class="n">-${fmt(m.other)}</td></tr>`:''}
+   <tr style="font-weight:700"><td>Resultado do mês</td><td class="n ${cls(m.result)}">${fmt(m.result)}</td></tr>${r.autoGiro?`<tr><td class="warn">Caixa ficou negativo: o banco cobriu ${fmt(r.autoGiro)} com capital de giro automático</td><td class="n warn">dívida ${fmt(S.loans.giro)}</td></tr>`:''}</table></div>
+   ${m.cashEnd<0?mia('Caixa negativo além do limite de crédito. Mais um mês assim e o banco encerra a conta. Venda estoque, antecipe recebíveis ou segure as compras.'):r.autoGiro?mia('O banco segurou a conta com capital de giro automático, mas cobra juros todo mês. Quite assim que as vendas entrarem: dívida parada come a margem.'):r.brandQuality?mia('Reputação custa mais caro que inspeção: R$ 1.800 por embarque evitam o lote ruim e as avaliações que ele deixa. A confiança sobe 10 pontos por mês em que você atende bem.'):r.ratio>0.2?mia('Você gerou demanda e não tinha estoque. Cliente que não encontra o produto demora a voltar: a confiança só se recupera com meses de demanda atendida. Marketing só vale com compras planejadas.'):m.over>0?mia(`Seu estoque passou ${m.over.toFixed(1)} m³ da capacidade e foi pro 3PL. Compare com o aluguel de um galpão na aba Investir.`):r.sales.length===0?mia('Nada vendido este mês. Enquanto a carga não chega, o custo fixo corre.'):mia('Receita só vira lucro depois de pagar comissão, custo da mercadoria e fixos. Acompanhe a margem, não o faturamento.')}`,buttons:[{label:'Próximo mês',cls:'primary'}]});
+}
+function queueEvent(){const s=S;
+  if(s.flags.aliqPending===s.turn){delete s.flags.aliqPending;s.flags.aliqDone=true;s.tax.iiExtra=0.04;s.flags.aliqUntil=s.turn+2;
+    queue.push({icon:'officer',title:'Alíquota do II subiu',html:`<p>Entrou em vigor a elevação de 4 pontos no Imposto de Importação. Vale por 3 meses.</p>${mia('Você soube com um mês de antecedência e pôde adiantar pedidos. É o que um sistema atualizado faz.')}`,buttons:[{label:'Ok'}]});return;}
+  if(rand()>0.72)return;
+  const pool=EVENTS.filter(e=>!e.cond||e.cond(s));const tot=pool.reduce((a,e)=>a+e.w,0);let r=rand()*tot;let ev=pool[pool.length-1];
+  for(const e of pool){r-=e.w;if(r<=0){ev=e;break;}}
+  if(ev.id==='aliquota'&&hasMaino(s)){s.flags.aliqPending=s.turn+1;s.flags.aliqDone=true;
+    queue.push({icon:'mia',title:'Mia avisa: alíquota vai mudar',html:`<p>A Receita publicou aumento de 4 pontos no II dos seus produtos. Entra em vigor <b>no mês que vem</b> e dura 3 meses.</p>${mia('Pedido que chegar este mês ainda paga 16%. Se for comprar, compre agora via aéreo ou courier.')}`,buttons:[{label:'Obrigado, Mia'}]});return;}
+  const d=ev.setup?ev.setup(s):null;const text=ev.textFn?ev.textFn(d):ev.text;
+  const EVICON={dolar_up:'dolar',dolar_down:'dolar',greve:'officer',navio:'ship',pedido:'truck',concorrente:'alerta',porto:'ship',aliquota:'officer',calote:'coin',fiscalizacao:'officer',bf:'alerta',fornecedor:'box',avaria:'box',demurrage:'container'};
+  if(ev.choice){queue.push({icon:EVICON[ev.id],title:ev.title,html:`<p>${text}</p>${mia(ev.mia)}`,buttons:[{label:'Recusar'},{label:'Aceitar',cls:'primary',onClick:()=>{ev.accept(s,d);renderGame();}}]});return;}
+  ev.apply(s,d);log(s,`Evento: ${ev.title}.`);
+  queue.push({icon:EVICON[ev.id],title:ev.title,html:`<p>${text}</p>${mia(ev.mia)}`,buttons:[{label:'Ok'}]});
+}
+
+/* ===================== FIM DE JOGO ===================== */
+function patrimonio(s){return s.cash+0.75*PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*stk(s,p.id).avg,0)+s.recv.reduce((a,r)=>a+r.amount,0)+s.ships.reduce((a,x)=>a+(x.sinalBRL||0),0)-s.loans.giro-s.loans.finimp;}
+function selos(s,broke){const out=[];
+  if(s.stats.vermelho>0&&!broke)out.push('Sobrevivente do canal vermelho');if(s.stats.fcl>=2)out.push('Rei do FCL');
+  if(s.stats.lockedBeforeSpike)out.push('Travou o câmbio na hora certa');if(s.wh===0&&s.stats.galpaoNunca&&patrimonio(s)>START_CASH)out.push('Just in time de verdade');
+  if(s.radar.level===2)out.push('Radar Ilimitada');if(s.flags.demurrage)out.push('Pagou demurrage e aprendeu');if(hasMaino(s))out.push('Fecha o mês em 2 minutos');if(sysLv(s)===4)out.push('Plano Comando');if(SEG.id==='beleza'&&!broke)out.push('Sobreviveu à Anvisa');if(filialOk(s))out.push('Operação em Santa Catarina');if(level(s).n>=4)out.push('Nível '+level(s).n+': '+level(s).name);
+  if(broke)out.push('Quebrou, mas tentou');if(patrimonio(s)>=START_CASH*2)out.push('Dobrou o capital');return out;}
+function queueGameOver(broke){const s=S;s.over=true;const pat=patrimonio(s);const rev=s.hist.reduce((a,h)=>a+h.m.rev,0);const sl=selos(s,broke);
+  const txt=`${broke?'Quebrei no mês '+s.turn:'Fechei o ano'} no ImportTycoon (${SEG.name}, ${SEG.level}, empresa nível ${level(s).n} ${level(s).name}): patrimônio ${fmt(pat)} (${pat>=START_CASH?'+':''}${Math.round((pat/START_CASH-1)*100)}%), caixa ${fmt(s.cash)}, faturamento ${fmt(rev)}, ${s.imports} importações, ${s.stats.vermelho} canal vermelho. Selos: ${sl.join(', ')||'nenhum'}. Você faz melhor? #ImportTycoon #Mainô`;
+  queue.push({noClose:true,icon:broke?'alerta':'office',title:broke?'Faliu. O banco encerrou a conta.':'Fim do ano fiscal',html:`
+   <div class="kpis"><div class="kpi"><b class="${pat>=START_CASH?'good':'bad'}">${fmt(pat)}</b><span>Patrimônio final</span></div><div class="kpi"><b>${fmt(rev)}</b><span>Faturamento</span></div><div class="kpi"><b>${s.imports}</b><span>Importações</span></div></div>
+   <p class="small muted">Começou com ${fmt(START_CASH)}. ${pat>=START_CASH?'Cresceu '+Math.round((pat/START_CASH-1)*100)+'%.':'Perdeu '+Math.round((1-pat/START_CASH)*100)+'%.'} Quem jogar ${SEG.name} no Desafio ${s.seedStr.split(':')[1]} enfrentou exatamente as mesmas condições: compare os prints.</p>
+   <div class="selos">${sl.map(x=>`<span class="selo">${x}</span>`).join('')||'<span class="muted small">Nenhum selo desta vez.</span>'}</div>
+   <div class="share"><h3>Seu placar é este print</h3>
+   <img id="card" alt="Card com o resultado da partida" style="width:100%;max-width:420px;height:auto;border-radius:12px;display:block;margin:6px auto">
+   <div class="row" style="justify-content:center;margin-top:8px"><button class="primary big" id="shareWa">Compartilhar no WhatsApp</button></div>
+   <div class="row" style="justify-content:center;margin-top:6px"><button id="saveImg">Salvar imagem</button><button id="copyImg">Copiar imagem</button><button id="copyTxt">Copiar texto</button></div>
+   <p id="shareMsg" class="small muted" style="text-align:center;margin-top:6px">No celular, você também pode segurar a imagem para salvar ou enviar.</p></div>
+   <div class="mia-note"><div class="av">${spr('mia',2)}</div><div>Na sua partida, cada chegada teve risco de erro de NF-e e você só soube da alíquota ao registrar a DUIMP. Na vida real, a Mainô gera a NF-e de importação a partir da DUIMP ou do XML da DI em 2 minutos e avisa antes de a norma mudar.<br><a class="cta" style="margin-top:8px" href="https://www.maino.com.br" target="_blank" rel="noopener">Quero importar de verdade</a></div></div>
+   `,
+   buttons:[{label:'Jogar de novo',cls:'primary',onClick:()=>{S=null;showStart();}}],
+   onOpen:()=>{setupShare(pat,rev,sl,broke,txt);}});
+}
+function buildCard(pat,rev,sl,broke){const s=S;const W=1080,H=1080;const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  const lucro=s.hist.reduce((a,h)=>a+h.m.result,0);const estoqueV=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*stk(s,p.id).avg,0);const estoqueU=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);
+  const recv=s.recv.reduce((a,r)=>a+r.amount,0);const divida=s.loans.giro+s.loans.finimp;const margem=rev?Math.round(s.hist.reduce((a,h)=>a+h.m.margin,0)/rev*100):0;
+  x.fillStyle='#1A2B4A';x.fillRect(0,0,W,H);x.fillStyle='#00B386';x.fillRect(0,0,W,14);
+  x.fillStyle='#fff';x.font='800 72px "Barlow Condensed", Impact, sans-serif';x.fillText('IMPORTTYCOON',56,110);
+  x.font='600 28px Barlow, sans-serif';x.fillStyle='#9FE8D3';x.fillText(SEG.name+' · '+SEG.level+' · '+(s.mode==='semanal'?'Desafio '+s.seedStr.split(':')[1]:'Desafio'),56,156);
+  x.fillStyle='#C9D3E3';x.fillText(s.nick+' · '+myAvatar().name+' · Nível '+level(s).n+' '+level(s).name,56,194);
+  drawRows(x,avatarRows(myAvatar(),0),W-56-12*9,70,9);
+  // patrimônio
+  x.fillStyle=broke?'#F06C6C':'#1ED3A5';x.font='800 120px "Barlow Condensed", Impact, sans-serif';x.fillText(fmt(pat),56,330);
+  x.fillStyle='#C9D3E3';x.font='600 26px Barlow, sans-serif';x.fillText((broke?'FALIU NO MÊS '+s.turn+' · ':'PATRIMÔNIO EM 12 MESES · ')+(pat>=START_CASH?'+':'')+Math.round((pat/START_CASH-1)*100)+'% SOBRE OS R$ 150 MIL INICIAIS',58,372);
+  // KPIs
+  const tiles=[['Caixa final',fmt(s.cash)],['Estoque ('+estoqueU+' un.)',fmt(estoqueV)],['Faturamento',fmt(rev)],['Lucro acumulado',fmt(lucro)],['Margem bruta',margem+'%'],['A receber',fmt(recv)],['Dívida',fmt(divida)],['Importações',s.imports+' · '+s.stats.vermelho+' canal vermelho'],['Sistema · Radar '+RADAR[s.radar.level].name,SYSTEMS[sysLv(s)].short]];
+  tiles.forEach((t,i)=>{const col=i%3,row=Math.floor(i/3);const px=56+col*330,py=420+row*140;x.fillStyle='#243F70';x.fillRect(px,py,310,120);x.fillStyle='#9FB0C6';x.font='600 20px Barlow, sans-serif';x.fillText(t[0].toUpperCase(),px+18,py+36);x.fillStyle='#fff';x.font='700 '+(t[1].length>18?30:40)+'px "Barlow Condensed", sans-serif';x.fillText(t[1],px+18,py+88);});
+  // selos
+  let y=880;x.font='700 24px "Barlow Condensed", sans-serif';let cx=56;
+  for(const t of sl.slice(0,6)){const w=x.measureText(t).width+30;if(cx+w>W-56){cx=56;y+=46;}x.fillStyle='#00B386';x.fillRect(cx,y-30,w,40);x.fillStyle='#06251C';x.fillText(t,cx+15,y);cx+=w+10;}
+  // rodapé
+  drawSpr(x,'ship',W-56-32*5,H-150,5,true);drawSpr(x,'container',W-56-16*5-200,H-80,4);drawSpr(x,'containerG',W-56-16*5-130,H-80,4);
+  x.fillStyle='#9FE8D3';x.font='600 24px Barlow, sans-serif';x.fillText('Um jogo da Mainô, o ERP especializado em importação.',56,H-70);x.fillText('#ImportTycoon  ·  Você faz melhor?',56,H-36);
+  return c;
+}
+function setupShare(pat,rev,sl,broke,txt){const c=buildCard(pat,rev,sl,broke);const img=$('#card');if(!img)return;const url=c.toDataURL('image/png');img.src=url;
+  const msg=t=>{const m=$('#shareMsg');if(m)m.textContent=t;};
+  const blobP=new Promise(r=>c.toBlob(r,'image/png'));
+  const copyImage=async()=>{const blob=await blobP;if(!navigator.clipboard||!window.ClipboardItem)throw new Error('sem clipboard');await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);};
+  $('#shareWa').onclick=async()=>{const blob=await blobP;const file=new File([blob],'importtycoon-resultado.png',{type:'image/png'});
+    try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'ImportTycoon',text:txt});msg('Compartilhado.');return;}}catch(e){if(e&&e.name==='AbortError')return;}
+    let copiado=false;try{await copyImage();copiado=true;}catch(e){}
+    const a=document.createElement('a');a.href='https://wa.me/?text='+encodeURIComponent(txt);a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+    msg(copiado?'Imagem copiada e WhatsApp aberto com o texto: cole a imagem na conversa.':'WhatsApp aberto com o texto. Salve a imagem (ou segure nela no celular) e anexe na conversa.');};
+  $('#saveImg').onclick=async()=>{const blob=await blobP;let d=null;try{d=window.claude&&claude.use?await claude.use('downloads'):null;}catch(e){}
+    if(d){try{await d.save({filename:'importtycoon-resultado.png',data:blob});msg('Imagem salva.');}catch(e){msg(e&&e.code==='declined'?'Salvamento cancelado.':'Não deu pra salvar aqui. Segure a imagem no celular ou use Copiar imagem.');}return;}
+    const a=document.createElement('a');a.href=url;a.download='importtycoon-resultado.png';document.body.appendChild(a);a.click();a.remove();msg('Se o download não começou, segure ou clique com o botão direito na imagem e salve.');};
+  $('#copyImg').onclick=async()=>{try{await copyImage();msg('Imagem copiada. Cole na conversa.');}catch(e){msg('Este navegador não permite copiar a imagem. Segure ou clique com o botão direito nela.');}};
+  $('#copyTxt').onclick=()=>{const ok=()=>msg('Texto copiado.');navigator.clipboard&&navigator.clipboard.writeText(txt).then(ok).catch(()=>{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){}ta.remove();});};
+}
+
+/* ===================== COMPRA ===================== */
+function buyPreview(){const b=ui.buy,p=P(b.pid),sup=SUP(b.sid);const M=MODAIS[b.modal];
+  const qty=Math.max(0,Math.floor(b.qty||0));const m3=qty*p.m3;const fobUSD=qty*p.fob*sup.mult;
+  const cifUSD=fobUSD+(freightBRL(b.modal,m3)+fobUSD*S.dollar*(b.seguro?0.005:0))/S.dollar;
+  const err=(!licOk(S,b.pid)&&p.anu.pre)?`${p.name} exige ${p.anu.label} antes do embarque. Solicite na sala de compras.`:rel(S,sup.id).blockedUntil>=S.turn?`${sup.name} não aceita pedidos seus até ${monthName(rel(S,sup.id).blockedUntil)}: você descumpriu o acordo de recorrência duas vezes.`:qty<moqOf(S,sup)?`Pedido mínimo deste fornecedor: ${moqOf(S,sup)} unidades.`:(M.maxFOB&&fobUSD>M.maxFOB)?`${M.name} aceita até ${fmtU(M.maxFOB)} FOB por remessa (você tem ${fmtU(fobUSD)}).`:m3<M.minM3?`${M.name} exige ao menos ${M.minM3} m³ (você tem ${m3.toFixed(1)}).`:m3>M.maxM3?`${M.name} aceita até ${M.maxM3} m³ (você tem ${m3.toFixed(1)}).`:
+    (S.radar.used+cifUSD>RADAR[S.radar.level].limit)?`Estoura o limite do Radar ${RADAR[S.radar.level].name}: ${fmtU(S.radar.used+cifUSD)} CIF de ${fmtU(RADAR[S.radar.level].limit)} no semestre.`:null;
+  const sh={pid:b.pid,sid:b.sid,qty,modal:b.modal,fobUSD,freight:Math.round(freightBRL(b.modal,m3)),seguro:b.seguro,insp:!!b.insp,ncmOk:stk(S,b.pid).ncmOk};
+  const rate=b.lock?S.dollar*1.012:S.dollar;const c=cascade(S,sh,rate,'verde');
+  const sinal=fobUSD*sup.deposit*rate;
+  return{sh,c,err,m3,sinal,rate,eta:S.turn+M.lead};
+}
+function solicitarLicenca(pid){const p=P(pid),l=lic(S,pid);if(!p.anu||l.status!=='none')return;confirmar({icon:'officer',title:`Solicitar ${p.anu.org} para ${p.name}?`,yes:'Solicitar',onYes:()=>doLicenca(pid),html:`<p><b>${p.anu.label}.</b> Custo de <b>${fmt(p.anu.cost)}</b> (taxas, laboratório e despachante), pago agora. Prazo previsto: <b>${p.anu.lead} mês(es)</b>, com ${Math.round(p.anu.risk*100)}% de chance de exigência que atrasa mais um mês.</p><p class="small muted">Sem a anuência o embarque não pode ser feito.</p>`});}
+function doLicenca(pid){const p=P(pid),l=lic(S,pid);if(!p.anu||l.status!=='none')return;ensureSnap();S.cash-=p.anu.cost;cfAdd('invest',p.anu.cost);pushCmd({t:'licenca',pid,desc:`Solicitou ${p.anu.org} para ${p.name}`,custo:p.anu.cost});S.m.other+=0;l.status='pending';l.ready=S.turn+p.anu.lead;log(S,`Solicitou ${p.anu.label} para ${p.name}: ${fmt(p.anu.cost)}. Previsão: ${monthName(l.ready)}.`);renderGame();}
+function startBuy(){const pv=buyPreview();if(pv.err)return;const st=stk(S,ui.buy.pid);const p=P(ui.buy.pid),sup=SUP(ui.buy.sid);const chegada=pv.c.total-pv.c.fobBRL+pv.sh.fobUSD*(1-sup.deposit)*pv.rate;
+  confirmar({icon:ui.buy.pid,title:`Enviar pedido de ${pv.sh.qty} ${p.name}?`,yes:'Enviar e negociar',onYes:()=>{if(st.ncm===null){askNCM(ui.buy.pid,()=>negotiate(pv));}else negotiate(pv);},html:`<p>Fornecedor ${sup.flag} <b>${sup.name}</b> · ${MODAIS[ui.buy.modal].name} · chegada em <b>${monthName(pv.eta)}</b>.</p><p>${ui.buy.insp?'Com inspeção pré-embarque ('+fmt(INSP_COST)+', cobrada na chegada).':'<span class="warn">Sem inspeção pré-embarque: '+Math.round(riskNoInsp(sup)*100)+'% de chance de incidente no lote.</span>'}</p><p>Sinal agora: <b>${fmt(pv.sinal)}</b>. Saldo + tributos na chegada: <b>${fmt(chegada)}</b> (câmbio ${ui.buy.lock?'travado':'do dia da chegada'}).</p><p class="small muted">Depois de enviado, a negociação define o preço final e o pedido não pode ser cancelado.</p>`});
+}
+function askNCM(pid,then){const p=P(pid);const opts=[...p.ncm];for(let i=opts.length-1;i>0;i--){const j=randIdx(i+1);[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const hint=hasMaino(S)?mia(`O classificador do sistema sugere <b>${p.ncm.find(n=>n.ok).c}</b> para ${p.name}.`):mia('A NCM define II e IPI e é o erro mais comum da importação. Vale a função essencial do produto, não o nome comercial. Na dúvida, procure a Solução de Consulta Cosit do produto.');
+  openModal({icon:pid,title:`Classifique a NCM: ${p.name}`,closeHint:'Pode fechar para consultar o Mercado ou a cascata de custos: nada foi enviado ao fornecedor ainda. Depois é só clicar de novo em "Negociar e fechar pedido".',html:`<p>Primeira importação deste produto. Escolha a NCM que vai na DUIMP.</p>${hint}${opts.map((o,i)=>`<button class="opt" data-i="${i}"><b>${o.c}</b><br><span class="small muted">${o.d}</span></button>`).join('')}`,buttons:[],
+   onOpen:()=>{document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const o=opts[+b.dataset.i];const st=stk(S,pid);st.ncm=o.c;st.ncmOk=o.ok;log(S,`NCM ${o.c} definida para ${p.name}.`);closeModal();then();});}});
+}
+function negotiate(pv){const sup=SUP(ui.buy.sid);const r=rel(S,sup.id);
+  if(r.promise&&r.promise.remaining>0){finishBuy(pv,'good',{why:`Preço de volume já combinado com ${sup.name}: desconto aplicado sem nova negociação.`},'promise');return;}
+  if(S.up.buyer){finishBuy(pv,'good',sup.opts.find(o=>o.k==='good'),'buyer');return;}
+  const opts=[...sup.opts];for(let i=opts.length-1;i>0;i--){const j=randIdx(i+1);[opts[i],opts[j]]=[opts[j],opts[i]];}
+  openModal({icon:'sup'+(SUPPLIERS.indexOf(sup)+1),title:`Negociação com ${sup.flag} ${sup.name}`,closeHint:'Fechar cancela a negociação sem custo: o sinal só é pago depois da sua resposta.',html:`<div class="msg"><div class="orig">${sup.msg.orig}</div><div class="tr">Tradução automática: ${sup.msg.tr}</div></div><p class="small muted">Como você responde?</p>${opts.map((o,i)=>`<button class="opt" data-i="${i}">${o.t}</button>`).join('')}`,buttons:[],
+   onOpen:()=>{document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const o=opts[+b.dataset.i];closeModal();finishBuy(pv,o.k,o,false);});}});
+}
+function finishBuy(pv,k,o,auto,rolls){const s=S,b=ui.buy,sup=SUP(b.sid),p=P(b.pid);ensureSnap();const ncmBefore={c:stk(s,b.pid).ncm,ok:stk(s,b.pid).ncmOk};const r=rel(s,sup.id);const upset=r.upsetUntil>=s.turn;
+  let disc=upset?1.05:k==='good'?0.94:k==='bad'?1.03:1;if(r.partner&&!upset)disc*=0.98;
+  let relMsg='';
+  if(!upset){if(r.promise){r.promise.remaining--;if(r.promise.remaining<=0){r.promise=null;r.partner=true;relMsg=`<p class="good">Acordo cumprido com ${sup.name}. Virou parceiro: 2% de desconto extra em todos os próximos pedidos.</p>`;log(s,`Cumpriu o acordo de recorrência com ${sup.name}. Agora é parceiro.`);}else{r.promise.deadline=s.turn+r.promise.gap;relMsg=`<p>Acordo com ${sup.name}: falta${r.promise.remaining>1?'m':''} <b>${r.promise.remaining}</b> pedido(s), o próximo até <b>${monthName(r.promise.deadline)}</b>.</p>`;}}
+    else if(k==='good'&&o.promise){r.promise={remaining:o.promise.more,deadline:s.turn+o.promise.gap,gap:o.promise.gap};relMsg=`<p><b>Compromisso assumido:</b> mais ${o.promise.more} pedido(s) a ${sup.name}, o próximo até <b>${monthName(r.promise.deadline)}</b>. O desconto vale para todos eles sem nova negociação.</p>`;}}
+  const sh={...pv.sh,fobUSD:pv.sh.fobUSD*disc,lockRate:b.lock?pv.rate:null,eta:pv.eta,canal:null,id:Date.now()+Math.random()};
+  const late=rolls?rolls.late:(sh.sid==='shenzhen'&&rand()>sup.rel);if(late){sh.eta++;sh.late=true;}
+  const scam=rolls?rolls.scam:(rand()<riskScam(s,sup)*(sh.insp?0.25:1));if(scam)sh.scam=true;
+  s.scamSeen=s.scamSeen||{};s.scamSeen[sup.id]=true;
+  const sinal=sh.fobUSD*sup.deposit*pv.rate;sh.sinalBRL=sinal;s.cash-=sinal;cfAdd('sinais',sinal);s.radar.used+=sh.fobUSD+(sh.freight+(sh.seguro?sh.fobUSD*s.dollar*0.005:0))/s.dollar;s.ships.push(sh);
+  if(b.modal==='fcl')s.stats.fcl++;
+  pushCmd({t:'buy',b:{...b},k,auto,late,scam,ncm:ncmBefore.c,ncmOk:ncmBefore.ok,desc:`Pedido: ${sh.qty} ${p.name} de ${sup.name} (${MODAIS[b.modal].name.split(' (')[0]}${b.lock?', câmbio travado':''}${b.insp?', com inspeção':', sem inspeção'})`,custo:sinal});
+  log(s,`Pedido: ${sh.qty} ${p.name} de ${sup.name}, ${fmtU(sh.fobUSD)}${disc<1?' (com desconto)':disc>1?' (sem desconto, preço subiu)':''}. Sinal ${fmt(sinal)}. ${MODAIS[b.modal].name.split(' (')[0]}, chega no mês ${sh.eta}.`);
+  renderGame();
+  if(s.replaying)return;
+  openModal({icon:'container',title:upset?`${sup.name} ainda está chateado: 5% a mais`:k==='good'?`Fechou com desconto de ${Math.round((1-disc)*100)}%`:k==='bad'?'Fechou, mas pagou 3% a mais':r.partner?'Fechou com 2% de parceiro':'Fechou no preço de lista',html:`${auto==='buyer'?'<p>Seu comprador internacional conduziu a negociação.</p>':''}${relMsg}<p>${sh.qty} <b>${p.name}</b> por ${fmtU(sh.fobUSD)}. Sinal de ${Math.round(sup.deposit*100)}% pago agora: <b>${fmt(sinal)}</b>. Saldo e tributos na chegada, prevista para <b>${monthName(sh.eta)}</b>${sh.eta===s.turn?' (ainda este mês)':''}.</p>${mia(upset?'Promessa quebrada tem preço. Ele vai voltar ao normal com o tempo, mas o desconto de volume só volta com um novo acordo cumprido.':o.why)}`,buttons:[{label:'Ok',cls:'primary'}]});
+}
+
+/* ===================== DECISÕES DO MÊS: registro, snapshot e desfazer ===================== */
+function snapshotOf(s){const o=Object.assign({},s,{snap:null,cmds:[],replaying:false});return JSON.parse(JSON.stringify(o));}
+function ensureSnap(){const s=S;if(s.replaying)return;if(!s.snap)s.snap=snapshotOf(s);}
+function pushCmd(c){const s=S;if(s.replaying)return;(s.cmds||(s.cmds=[])).push(c);}
+function captureSettings(s){return{mkt:s.mkt||0,prod:Object.fromEntries(PRODUCTS.map(p=>[p.id,{price:stk(s,p.id).price,channel:stk(s,p.id).channel}]))};}
+function applySettings(s,st){s.mkt=st.mkt;for(const p of PRODUCTS){if(st.prod[p.id]){stk(s,p.id).price=st.prod[p.id].price;stk(s,p.id).channel=st.prod[p.id].channel;}}}
+function replayCmd(c){const s=S;
+  switch(c.t){
+    case 'buy':{ui.buy={...c.b};const st=stk(s,c.b.pid);if(st.ncm===null&&c.ncm){st.ncm=c.ncm;st.ncmOk=c.ncmOk;}const pv=buyPreview();if(pv.err||s.cash<pv.sinal)return false;const sup=SUP(c.b.sid);const o=c.auto==='promise'?{why:''}:(sup.opts.find(x=>x.k===c.k)||{why:''});finishBuy(pv,c.k,o,c.auto,{late:!!c.late,scam:!!c.scam});return true;}
+    case 'licenca':{const p=P(c.pid);if(!p||!p.anu||lic(s,c.pid).status!=='none'||s.cash<p.anu.cost)return false;doLicenca(c.pid);return true;}
+    case 'warehouse':if(c.i<=s.wh)return false;doWarehouse(c.i);return true;
+    case 'sistema':if(c.lv<=sysLv(s))return false;doSistema(c.lv);return true;
+    case 'buyer':if(s.up.buyer)return false;doBuyer();return true;
+    case 'radar':{const nx=RADAR[s.radar.level+1];if(!nx||s.imports<nx.req||s.cash<nx.cost)return false;doRadar();return true;}
+    case 'filial':if((s.filial&&s.filial.status!=='none')||s.cash<FILIAL.setup)return false;doFilial();return true;
+    case 'loan':if(c.amt<0&&s.loans[c.kind]<=0)return false;doLoan(c.kind,c.amt);return true;
+    case 'antecipar':if(!s.recv.length)return false;doAntecipar();return true;
+  }return false;}
+function undoCmd(i){const s=S;if(!s.snap)return;const keep=(s.cmds||[]).filter((_,j)=>j!==i);const removed=(s.cmds||[])[i];const settings=captureSettings(s);const rng=s.rng;const snap=s.snap;const buyNow={...ui.buy};
+  const restored=JSON.parse(JSON.stringify(snap));restored.snap=snap;restored.cmds=[];restored.replaying=true;S=restored;applySettings(S,settings);
+  const dropped=[];for(const c of keep){let ok=false;try{ok=replayCmd(c);}catch(e){ok=false;}if(ok)S.cmds.push(c);else dropped.push(c);}
+  S.replaying=false;S.rng=rng;ui.buy=buyNow;if(!S.cmds.length)S.snap=null;log(S,`Desfez: ${removed.desc}.`);renderGame();revisarMes(dropped,removed);}
+function revisarMes(dropped,removed){const s=S;const cmds=s.cmds||[];const set=captureSettings(s);
+  const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
+  const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
+  openModal({icon:'coin',title:`Revisar e fechar ${monthName(s.turn)}`,html:`
+   ${removed?`<p class="good small">Desfeito: ${removed.desc}.${dropped&&dropped.length?` <span class="warn">Caíram junto por depender dela: ${dropped.map(d=>d.desc).join('; ')}.</span>`:''}</p>`:''}
+   <h3>Decisões deste mês</h3>
+   ${cmds.length?`<div class="tbl"><table>${cmds.map((c,i)=>`<tr><td>${c.desc}</td><td class="n">${c.custo?fmt(c.custo):''}</td><td class="n"><button class="small" data-undo="${i}">Desfazer</button></td></tr>`).join('')}</table></div>`:'<p class="small muted">Nenhuma decisão registrada neste mês: só ajustes de preço, canal e marketing.</p>'}
+   <h3 style="margin-top:10px">Ajustes em vigor</h3>
+   <div class="tbl"><table>${PRODUCTS.filter(p=>stk(s,p.id).qty>0||stk(s,p.id).avg>0||s.ships.some(x=>x.pid===p.id)).map(p=>`<tr><td>${p.name}</td><td class="n">${fmt(set.prod[p.id].price)}</td><td>${set.prod[p.id].channel==='ambos'?'marketplace + B2B':set.prod[p.id].channel}</td></tr>`).join('')}<tr><td>Marketing</td><td class="n">${fmt(set.mkt)}/mês</td><td>demanda +${Math.round(mktLift(set.mkt)*100)}%</td></tr></table></div>
+   <div class="row" style="margin-top:6px"><button data-room="vendas">Ajustar preços e marketing</button><button data-room="comprar">Ir para compras</button><button data-room="investir">Ir para a Diretoria</button></div>
+   <h3 style="margin-top:10px">O que vai acontecer no fechamento</h3>
+   <p class="small"><b>Vendas previstas:</b> ${vendas.length?vendas.join(', '):'nenhuma (sem estoque)'}.<br><b>Chegadas:</b> ${chegadas.length?chegadas.join(', ')+'. Saldo ao fornecedor e tributos serão pagos agora.':'nenhuma'}.<br><b>Custos fixos:</b> ${fmt(fixos)}${s.loans.giro+s.loans.finimp?` · <b>juros:</b> ${fmt(Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE))}`:''}.</p>
+   ${sem?mia('Você não tem estoque nem pedidos a caminho. O mês vai passar só com custo fixo.'):s.cash<0?mia('Seu caixa já está negativo além do limite de crédito. Se fechar negativo de novo, o banco encerra a conta.'):''}`,
+   buttons:[{label:'Voltar e ajustar'},{label:`Fechar ${monthName(s.turn)}`,cls:'primary',onClick:closeMonth}],
+   onOpen:()=>{document.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{closeModal();undoCmd(+b.dataset.undo);});document.querySelectorAll('#ov [data-room]').forEach(b=>b.onclick=()=>{closeModal();goRoom(b.dataset.room);});}});
+}
+
+/* ===================== INVESTIMENTOS E FINANÇAS ===================== */
+function doWarehouse(i){if(i<=S.wh)return;ensureSnap();S.wh=i;pushCmd({t:'warehouse',i,desc:`Alugou ${WAREHOUSES[i].name} (${fmt(WAREHOUSES[i].rent)}/mês)`,custo:0});S.stats.galpaoNunca=false;log(S,`Alugou ${WAREHOUSES[i].name}.`);renderGame();}
+function buyWarehouse(i){if(i<=S.wh)return;const w=WAREHOUSES[i];confirmar({icon:'container',title:`Alugar ${w.name}?`,yes:'Alugar',onYes:()=>doWarehouse(i),html:`<p><b>${w.cap} m³</b> por <b>${fmt(w.rent)}/mês</b>, cobrado a partir deste fechamento e sem volta. ${w.desc}</p>`});}
+function contratarSistema(lv){const t=SYSTEMS[lv];if(lv<=sysLv(S))return;confirmar({icon:lv>=2?'mia':'box',title:`${sysLv(S)>0?'Mudar para':'Contratar'} ${t.name} por ${fmt(t.fee)}/mês?`,yes:sysLv(S)>0?'Fazer upgrade':'Contratar',onYes:()=>doSistema(lv),html:`<p>${t.desc}</p><p class="small muted">Mensalidade cobrada em cada fechamento. Não há downgrade.</p>`});}
+function doSistema(lv){ensureSnap();pushCmd({t:'sistema',lv,desc:`Contratou ${SYSTEMS[lv].name} (${fmt(SYSTEMS[lv].fee)}/mês)`,custo:0});S.sys=lv;S.up.maino=lv>=2;if(lv>=2&&!S.stats.mainoTurn)S.stats.mainoTurn=S.turn;log(S,`Contratou ${SYSTEMS[lv].name}.`);renderGame();}
+function buyMaino(){confirmar({icon:'mia',title:`Contratar a Mainô por ${fmt(MAINO_FEE)}/mês?`,yes:'Contratar',onYes:doMaino,html:`<p>NF-e de importação sem erro, metade do risco de canal vermelho, aviso antecipado de mudança de alíquota, sugestão de NCM. Economiza R$ 800/mês de retrabalho e R$ 500 por processo no despachante.</p>`});}
+function doMaino(){doSistema(2);}
+function buyBuyer(){confirmar({icon:'sup2',title:`Contratar comprador internacional por ${fmt(BUYER_FEE)}/mês?`,yes:'Contratar',onYes:doBuyer,html:`<p>Fala a língua do fornecedor: toda negociação fecha com o melhor desconto. Custo fixo mensal até o fim do ano.</p>`});}
+function doBuyer(){ensureSnap();pushCmd({t:'buyer',desc:`Contratou comprador internacional (${fmt(BUYER_FEE)}/mês)`,custo:0});S.up.buyer=true;log(S,'Contratou comprador internacional.');renderGame();}
+function abrirFilial(){const s=S;if(s.filial&&s.filial.status!=='none')return;const falta=s.imports<FILIAL.reqImports?`Exige ${FILIAL.reqImports} importações concluídas (você tem ${s.imports}).`:s.radar.level<FILIAL.reqRadar?'Exige Radar Limitada ou Ilimitada.':s.cash<FILIAL.setup?'Caixa insuficiente.':null;if(falta)return;
+  confirmar({icon:'office',title:`Abrir ${FILIAL.name} por ${fmt(FILIAL.setup)}?`,yes:'Abrir filial',onYes:doFilial,html:`<p><b>Implantação:</b> ${fmt(FILIAL.setup)} agora (abertura, inscrição estadual, estrutura, consultoria para o TTD). <b>Custo fixo:</b> ${fmt(FILIAL.rent)}/mês a partir de agora. <b>Pronta em ${FILIAL.lead} meses.</b></p><p><b>Efeito:</b> ICMS da importação diferido no desembaraço (hoje 18% por dentro) e carga efetiva de ${(FILIAL.icmsEfetivo*100).toFixed(1).replace('.',',')}% sobre as vendas; mais ${FILIAL.cap} m³ de galpão.</p><p class="small muted">Benefício oneroso: a filial precisa operar de verdade. Com a Reforma Tributária os benefícios de ICMS caem gradualmente de 2029 a 2032.</p>`});}
+function doFilial(){const s=S;ensureSnap();pushCmd({t:'filial',desc:`Abriu ${FILIAL.name}`,custo:FILIAL.setup});s.cash-=FILIAL.setup;cfAdd('invest',FILIAL.setup);s.filial={status:'setup',ready:s.turn+FILIAL.lead};log(s,`Abriu ${FILIAL.name}: ${fmt(FILIAL.setup)}. Operação prevista para ${monthName(s.filial.ready)}.`);renderGame();}
+function upRadar(){const nx=RADAR[S.radar.level+1];if(!nx||S.imports<nx.req||S.cash<nx.cost)return;confirmar({icon:'officer',title:`Habilitar Radar ${nx.name} por ${fmt(nx.cost)}?`,yes:'Habilitar',onYes:doRadar,html:`<p>Limite passa para <b>${nx.limit===Infinity?'ilimitado':fmtU(nx.limit)+' CIF por semestre'}</b>. O valor cobre consultoria e revisão da capacidade financeira estimada e sai do caixa agora.</p>`});}
+function doRadar(){const nx=RADAR[S.radar.level+1];if(!nx)return;ensureSnap();pushCmd({t:'radar',desc:`Habilitou Radar ${nx.name}`,custo:nx.cost});S.cash-=nx.cost;cfAdd('invest',nx.cost);S.radar.level++;log(S,`Radar ${nx.name} habilitado.`);renderGame();}
+function loan(kind,amt){amt=Math.round(amt);if(!amt)return;const nome=kind==='giro'?'capital de giro':'FINIMP';const taxa=kind==='giro'?giroRate(S):FINIMP_RATE;if(amt>0)confirmar({icon:'coin',title:`Tomar ${fmt(amt)} de ${nome}?`,yes:'Tomar crédito',onYes:()=>doLoan(kind,amt),html:`<p>Juros de <b>${(taxa*100).toFixed(1)}% ao mês</b> (${fmt(Math.round(amt*taxa))}/mês) cobrados em cada fechamento até você quitar.</p>`});else confirmar({icon:'coin',title:`Pagar ${fmt(-amt)} de ${nome}?`,yes:'Pagar',onYes:()=>doLoan(kind,amt),html:`<p>Sai do caixa agora e reduz os juros do próximo fechamento.</p>`});}
+function doLoan(kind,amt){const max=kind==='giro'?GIRO_MAX:FINIMP_MAX;ensureSnap();pushCmd({t:'loan',kind,amt,desc:`${amt>0?'Tomou':'Pagou'} ${fmt(Math.abs(amt))} de ${kind==='giro'?'capital de giro':'FINIMP'}`,custo:0});
+  if(amt>0){amt=Math.min(amt,max-S.loans[kind]);S.loans[kind]+=amt;S.cash+=amt;cfAdd('credito',amt);log(S,`Tomou ${fmt(amt)} de ${kind==='giro'?'capital de giro':'FINIMP'}.`);}
+  else{amt=Math.min(-amt,S.loans[kind],S.cash);S.loans[kind]-=amt;S.cash-=amt;cfAdd('credito',-amt);log(S,`Pagou ${fmt(amt)} de ${kind==='giro'?'capital de giro':'FINIMP'}.`);}
+  renderGame();}
+function antecipar(){const tot=S.recv.reduce((a,r)=>a+r.amount,0);if(!tot)return;confirmar({icon:'coin',title:`Antecipar ${fmt(tot)} em recebíveis?`,yes:'Antecipar',onYes:doAntecipar,html:`<p>Você recebe <b>${fmt(Math.round(tot*0.95))}</b> hoje e abre mão de ${fmt(Math.round(tot*0.05))} de deságio (5%).</p>`});}
+function doAntecipar(){const tot=S.recv.reduce((a,r)=>a+r.amount,0);if(!tot)return;ensureSnap();pushCmd({t:'antecipar',desc:`Antecipou ${fmt(tot)} em recebíveis (FIDC)`,custo:Math.round(tot*0.05)});const net=Math.round(tot*0.95);S.cash+=net;cfAdd('antecip',net);S.m.other+=tot-net;S.recv=[];log(S,`Antecipou ${fmt(tot)} em recebíveis via FIDC. Recebeu ${fmt(net)}.`);renderGame();}
+
+/* ===================== MIA ===================== */
+function mia(t){return `<div class="mia-note"><div class="av">${spr('mia',2)}</div><div>${t}</div></div>`;}
+function coverage(s,pid){const st=stk(s,pid);const d=demandFor(s,pid,st.price,st.channel,1);const dem=Math.round(d.mp)+Math.round(d.b2b);const transit=s.ships.filter(x=>x.pid===pid);const next=transit.length?Math.min(...transit.map(x=>x.eta)):null;return{dem,months:dem>0?st.qty/dem:(st.qty>0?99:0),next,transitQty:transit.reduce((a,x)=>a+x.qty,0)};}
+function miaTip(s){const m=(s.turn-1)%12;
+  {const risco=PRODUCTS.map(p=>({p,c:coverage(s,p.id)})).filter(x=>stk(s,x.p.id).qty>0&&x.c.months<2.2&&(x.c.next==null||x.c.next>s.turn+Math.ceil(x.c.months)));if(risco.length){const x=risco[0];return `${x.p.name}: o estoque cobre ${x.c.months<1?'menos de 1 mês':Math.floor(x.c.months)+' mês(es)'} e ${x.c.next?'o próximo embarque só chega em '+monthName(x.c.next):'não há embarque a caminho'}. Marítimo leva 2 meses: peça agora ou vai faltar.`;}}
+  const semLic=PRODUCTS.filter(p=>p.anu&&lic(s,p.id).status==='none');if(semLic.length===PRODUCTS.filter(p=>p.anu).length&&semLic.length&&s.ships.length===0)return `Neste segmento ${semLic.length===PRODUCTS.length?'todo produto':semLic.map(p=>p.name).join(', ')} exige anuência antes do embarque. Solicite na sala de compras: leva ${Math.max(...semLic.map(p=>p.anu.lead))} mês(es).`;
+  const due=SUPPLIERS.find(x=>{const r=rel(s,x.id);return r.promise&&r.promise.deadline===s.turn;});if(due)return `Você prometeu recorrência a ${due.name} e o prazo do próximo pedido é este mês. Um pedido pequeno mantém o acordo e o desconto.`;
+  if(s.turn===1&&s.ships.length===0)return 'Primeiro mês: compre. Um LCL de 200 a 400 unidades leva 2 meses pra chegar. Enquanto isso, o custo fixo corre.';
+  if(brand(s)<0.8)return `Confiança da marca em ${Math.round(brand(s)*100)}%: clientes saíram sem comprar. Garanta estoque antes de gastar em marketing; ela sobe 10 pontos por mês atendido.`;
+  if((s.mkt||0)>0){const tot=PRODUCTS.reduce((a,p)=>{const st=stk(s,p.id);if(!(st.avg>0||st.qty>0))return a;const d=demandFor(s,p.id,st.price,st.channel,1);return a+Math.round(d.mp)+Math.round(d.b2b);},0);const est=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);if(tot>est*1.2)return `Você está gastando ${fmt(s.mkt)} em marketing com estoque para ${est} unidades e demanda prevista de ${tot}. Compre antes de anunciar.`;}
+  if(s.ships.some(x=>!x.insp&&riskNoInsp(SUP(x.sid))>=0.1))return 'Você tem embarque sem inspeção com fornecedor de confiabilidade baixa. Da próxima vez, R$ 1.800 de inspeção protegem um lote de dezenas de milhares.';
+  if(s.cash<0)return 'Caixa negativo além do limite de crédito. Mais um mês assim e acabou. Venda estoque, antecipe recebíveis ou segure compras.';
+  if(s.ships.length&&stockM3(s)+s.ships.reduce((a,x)=>a+x.qty*P(x.pid).m3,0)>whCap(s))return 'O que está chegando não cabe no seu espaço. Vai pro 3PL a R$ 150/m³. Compare com o aluguel de galpão em Investir.';
+  if(s.dHist.length>=3&&s.dollar>s.dHist[s.dHist.length-3]*1.04)return 'Dólar em alta há dois meses. Travar o câmbio custa 1,2% e tira o risco do saldo que vence na chegada.';
+  if(m>=7&&m<=9)return 'Novembro e dezembro concentram metade das vendas do ano. Pedido marítimo agora chega a tempo da Black Friday.';
+  if(m===10||m===11)return 'Pico de demanda. Preço acima do mercado ainda vende. Não deixe estoque pra janeiro, que é fraco.';
+  if(sysLv(s)===0&&(PRODUCTS.some(p=>stk(s,p.id).qty>0)||s.ships.length))return 'Você vai vender sem emitir nota. Marketplace fechado, metade dos clientes B2B some e 20% de chance por mês de a fiscalização parar a operação. Contrate ao menos um sistema generalista na Diretoria.';
+  if(sysLv(s)===1&&s.imports>=2)return 'Você já teve chegadas com ERP generalista: cada uma tem 35% de chance de erro na NF-e de importação. O Mainô Operação elimina isso por R$ 990/mês.';
+  if(s.radar.used>RADAR[s.radar.level].limit*0.7&&s.radar.level<2)return 'Seu Radar está perto do limite do semestre. Subir de nível em Investir libera volume.';
+  if(s.cash>120000&&s.ships.length===0)return 'Dinheiro parado não importa nada. Capital em caixa sem estoque é custo de oportunidade.';
+  return 'Faturamento não é lucro. Olhe a margem depois de comissão, tributos e fixos no fechamento de cada mês.';
+}
+
+/* ===================== PIXEL ART (sprites desenhados em canvas) ===================== */
+const PAL={k:'#1A2B4A',w:'#F3F6F9',g:'#00B386',G:'#0A7B5F',y:'#F2B53B',o:'#E07A2F',r:'#D14343',b:'#3B82F6',B:'#243F70',s:'#9FB0C6',S:'#5B6B82',t:'#F1C27D',h:'#5A3A1E',c:'#7DD3FC',C:'#2E8BC0',d:'#2D3748',n:'#C9D3E3',m:'#B8C4D6',e:'#D9A066'};
+const SPR={
+fone:[
+'....kkkk....',
+'..kkwwwwkk..',
+'.kwwkkkkwwk.',
+'.kwk....kwk.',
+'kwwk....kwwk',
+'kggk....kggk',
+'kggk....kggk',
+'kGGk....kGGk',
+'.kk......kk.'],
+carregador:[
+'..kkkkkkkk..',
+'.kwwwwwwwwk.',
+'.kwwwwwwwwk.',
+'.kwwkwwkwwk.',
+'.kwwkwwkwwk.',
+'.kwwwwwwwwk.',
+'..kkkkkkkk..',
+'....kssk....',
+'....kssk....',
+'.....kk.....',
+'.....kk.....'],
+smartwatch:[
+'....kkkk....',
+'....kssk....',
+'..kkkkkkkk..',
+'.kkwwwwwwkk.',
+'.kkwkkkkwkk.',
+'.kkwkggkwkk.',
+'.kkwkkkkwkk.',
+'.kkwwwwwwkk.',
+'..kkkkkkkk..',
+'....kssk....',
+'....kkkk....'],
+caixa:[
+'.kkkkkkkkkk.',
+'kwwwwwwwwwwk',
+'kwkkkwwkkkwk',
+'kwkgkwwkgkwk',
+'kwkkkwwkkkwk',
+'kwwwwwwwwwwk',
+'kwwkkkkkkwwk',
+'kwwwwwwwwwwk',
+'.kkkkkkkkkk.'],
+box:[
+'.kkkkkkkkkk.',
+'keeeeeeeeeek',
+'keekkkkkkeek',
+'keeeeeeeeeek',
+'keeeeeeeeeek',
+'keeeeeeeeeek',
+'keeeeeeeeeek',
+'.kkkkkkkkkk.'],
+container:[
+'kkkkkkkkkkkkkkkk',
+'kooookooookooook',
+'kooookooookooook',
+'kooookooookooook',
+'kooookooookooook',
+'kooookooookooook',
+'kkkkkkkkkkkkkkkk'],
+containerG:[
+'kkkkkkkkkkkkkkkk',
+'kggggkggggkgggGk',
+'kggggkggggkgggGk',
+'kggggkggggkgggGk',
+'kggggkggggkgggGk',
+'kggggkggggkgggGk',
+'kkkkkkkkkkkkkkkk'],
+ship:[
+'.........kk.....................',
+'.........kk.....kkkkkk..........',
+'........kwwk....kwwwwk..........',
+'.....kkkkkkkkkkkkkkkkkkkkk......',
+'.....koookyyyykgggggkoookk......',
+'.....koookyyyykgggggkoookk......',
+'.....kkkkkkkkkkkkkkkkkkkkk......',
+'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk',
+'.kBBBBBBBBBBBBBBBBBBBBBBBBBBBBk.',
+'..kBBBBBwwBBBBBBBBBBBBBBBBBBBk..',
+'...kkkkkkkkkkkkkkkkkkkkkkkkkk...'],
+plane:[
+'..........kk........',
+'..........kwk.......',
+'.kkkkkkkkkkwwkkkk...',
+'kwwwwwwwwwwwwwwwwwk.',
+'.kkkkkkkkkkkkkkkkk..',
+'......kkk...........',
+'.....kwwk...........',
+'.....kkkk...........'],
+truck:[
+'kkkkkkkkkkkk........',
+'kwwwwwwwwwwkkkkk....',
+'kwgggggggwwkggggk...',
+'kwgggggggwwkgwwgk...',
+'kwwwwwwwwwwkggggk...',
+'kkkkkkkkkkkkkkkkk...',
+'..kSSk.....kSSk.....',
+'..kkkk.....kkkk.....'],
+office:[
+'.....kkkkkkkkkk.....',
+'....kggggggggggk....',
+'...kggggggggggggk...',
+'..kkkkkkkkkkkkkkkk..',
+'..kwwwwwwwwwwwwwwk..',
+'..kwkckwkckwkckwwk..',
+'..kwkckwkckwkckwwk..',
+'..kwwwwwwwwwwwwwwk..',
+'..kwkckwkckwkckwwk..',
+'..kwkckwkckwkckwwk..',
+'..kwwwwwwwwwwwwwwk..',
+'..kwkckwkckwkckwwk..',
+'..kwkckwkckwkckwwk..',
+'..kwwwwwwkkkwwwwwk..',
+'..kwwwwwwkgkwwwwwk..',
+'..kwwwwwwkgkwwwwwk..',
+'..kkkkkkkkkkkkkkkk..'],
+galpao:[
+'....kkkkkkkkkkkkkkkkkkkkkkkkkkkk....',
+'...kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk...',
+'..kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk..',
+'.kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk.',
+'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk',
+'kmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmk',
+'kmmmkkkkkkkkmmmmmmmmmmmmmkkkkkkkkmmmk',
+'kmmmkSSSSSSkmmmmmmmmmmmmmkcccccckmmmk',
+'kmmmkSSSSSSkmmmmkggggkmmmkcccccckmmmk',
+'kmmmkSSSSSSkmmmmkggggkmmmkcccccckmmmk',
+'kmmmkSSSSSSkmmmmkggggkmmmkcccccckmmmk',
+'kmmmkSSSSSSkmmmmkggggkmmmkcccccckmmmk',
+'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'],
+mia:[
+'....kkkkkkkk....',
+'...khhhhhhhhk...',
+'..khhhhhhhhhhk..',
+'..khhtttttthhk..',
+'..khtttttttthk..',
+'..kttkttttkttk..',
+'..kttttttttttk..',
+'..ktttkttktttk..',
+'...kttttttttk...',
+'....kkttttkk....',
+'...kggkkkkggk...',
+'..kggggggggggk..',
+'..kggggggggggk..',
+'..kggkggggkggk..',
+'..kkkkkkkkkkkk..'],
+officer:[
+'....kkkkkkkk....',
+'...kBBBBBBBBk...',
+'..kBBBBBBBBBBk..',
+'..kkkkkkkkkkkk..',
+'..kttttttttttk..',
+'..kttkttttkttk..',
+'..kttttttttttk..',
+'..ktttkkkktttk..',
+'...kttttttttk...',
+'....kkttttkk....',
+'...kBBkkkkBBk...',
+'..kBBByBBByBBk..',
+'..kBBBBBBBBBBk..',
+'..kBBBBBBBBBBk..',
+'..kkkkkkkkkkkk..'],
+sup1:[
+'....kkkkkkkk....',
+'...kkkkkkkkkk...',
+'..kkkkkkkkkkkk..',
+'..kkkkkkkkkkkk..',
+'..kttttttttttk..',
+'..kttkttttkttk..',
+'..kttttttttttk..',
+'..ktttkkkktttk..',
+'...kttttttttk...',
+'....kkttttkk....',
+'...kookkkkook...',
+'..kooooooooook..',
+'..kooooooooook..',
+'..kooooooooook..',
+'..kkkkkkkkkkkk..'],
+sup2:[
+'....kkkkkkkk....',
+'...kkkkkkkkkk...',
+'..kkkkkkkkkkkk..',
+'..kktttttttkkk..',
+'..kttttttttttk..',
+'..kttkttttkttk..',
+'..kttttttttttk..',
+'..ktttkkkktttk..',
+'...kttttttttk...',
+'....kkttttkk....',
+'...kwwkkkkwwk...',
+'..kwwwwkkwwwwk..',
+'..kwwwwwwwwwwk..',
+'..kwwwwwwwwwwk..',
+'..kkkkkkkkkkkk..'],
+sup3:[
+'....kkkkkkkk....',
+'...kkkkkkkkkk...',
+'..kkkkkkkkkkkk..',
+'..kkkkkkkkkkkk..',
+'..kttttttttttk..',
+'..kttkttttkttk..',
+'..kttkkkkkkttk..',
+'..ktttkkkktttk..',
+'...kttttttttk...',
+'....kkttttkk....',
+'...kBBkkkkBBk...',
+'..kBBBBrrBBBBk..',
+'..kBBBBBBBBBBk..',
+'..kBBBBBBBBBBk..',
+'..kkkkkkkkkkkk..'],
+coin:[
+'..kkkkkk..',
+'.kyyyyyyk.',
+'kyykyyyyyk',
+'kykyyyyyyk',
+'kykyykkyyk',
+'kykyyyyyyk',
+'kyykyyyyyk',
+'.kyyyyyyk.',
+'..kkkkkk..'],
+dolar:[
+'...kkkk...',
+'..kwwwwk..',
+'.kwkkkkwk.',
+'.kwkkwwwk.',
+'..kwwwwk..',
+'.kwwwkkwk.',
+'.kwkkkkwk.',
+'..kwwwwk..',
+'...kkkk...'],
+alerta:[
+'.....kk.....',
+'....kyyk....',
+'...kyyyyk...',
+'..kyykkyyk..',
+'.kyyykkyyyk.',
+'kyyyykkyyyyk',
+'kyyyyyyyyyyk',
+'kyyyykkyyyyk',
+'kkkkkkkkkkkk'],
+};
+Object.assign(SPR,{
+coleira:[
+'....kkkk....',
+'..kkeeeekk..',
+'.keeeeeeeek.',
+'.kee....eek.',
+'kee......eek',
+'kee......eek',
+'.kee....eek.',
+'.keeeeeeeek.',
+'..kkeyyekk..',
+'....kyyk....',
+'....kkkk....'],
+cama:[
+'............',
+'.kkkkkkkkkk.',
+'kooooooooook',
+'koowwwwwwook',
+'koowwwwwwook',
+'koowwwwwwook',
+'kooooooooook',
+'kkkkkkkkkkkk',
+'.kk......kk.'],
+comedouro:[
+'............',
+'............',
+'.kkkkkkkkkk.',
+'kbbbbbbbbbbk',
+'kbbeeeeeebbk',
+'.kbbbbbbbbk.',
+'..kkkkkkkk..',
+'...kbbbbk...',
+'...kkkkkk...'],
+racao:[
+'...kkkkkk...',
+'..kyyyyyyk..',
+'.kyyyyyyyyk.',
+'.kyykkkkyyk.',
+'.kykeeeekyk.',
+'.kykeeeekyk.',
+'.kyykkkkyyk.',
+'.kyyyyyyyyk.',
+'.kyyyyyyyyk.',
+'.kkkkkkkkkk.'],
+serum:[
+'....kkkk....',
+'....kssk....',
+'....kkkk....',
+'...kwwwwk...',
+'...kwwwwk...',
+'..kwwwwwwk..',
+'..kwggggwk..',
+'..kwggggwk..',
+'..kwggggwk..',
+'..kwwwwwwk..',
+'...kkkkkk...'],
+protetor:[
+'....kkkk....',
+'....kyyk....',
+'...kkkkkk...',
+'..kwwwwwwk..',
+'..kwwwwwwk..',
+'..kwyyyywk..',
+'..kwyyyywk..',
+'..kwwwwwwk..',
+'..kwwwwwwk..',
+'...kkkkkk...'],
+whey:[
+'..kkkkkkkk..',
+'.kkkkkkkkkk.',
+'.kkkkkkkkkk.',
+'.kwwwwwwwwk.',
+'.kwwkkkkwwk.',
+'.kwkggggkwk.',
+'.kwkggggkwk.',
+'.kwwkkkkwwk.',
+'.kwwwwwwwwk.',
+'.kkkkkkkkkk.'],
+vitaminas:[
+'...kkkkkk...',
+'...koooook..',
+'..kkkkkkkk..',
+'..kwwwwwwk..',
+'..kwwkkwwk..',
+'..kwkyykwk..',
+'..kwkyykwk..',
+'..kwwkkwwk..',
+'..kwwwwwwk..',
+'..kkkkkkkk..'],
+});
+
+let TIPS=[];
+const tip=(html)=>{TIPS.push(html);return `<button type="button" class="tipbtn" data-tip="${TIPS.length-1}" aria-label="Dica" title="Dica">i</button>`;};
+function closeTip(){const o=document.querySelector('.tipbox');if(o)o.remove();}
+function placeTip(b,box){const r=b.getBoundingClientRect();const W=innerWidth,H=innerHeight;const w=Math.min(360,W-16);box.style.width=w+'px';let left=Math.min(Math.max(8,r.left),W-w-8);let top=r.bottom+8;box.style.left=left+'px';box.style.top=top+'px';const bh=box.offsetHeight;if(top+bh>H-8&&r.top-bh-8>8)box.style.top=(r.top-bh-8)+'px';}
+document.addEventListener('click',e=>{const b=e.target.closest('.tipbtn');const open=document.querySelector('.tipbox');
+  if(open&&!e.target.closest('.tipbox'))open.remove();
+  if(!b)return;if(open&&open.dataset.for===b.dataset.tip)return;
+  const box=document.createElement('div');box.className='tipbox';box.dataset.for=b.dataset.tip;box.innerHTML=TIPS[+b.dataset.tip]||'';document.body.appendChild(box);placeTip(b,box);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTip();});
+addEventListener('scroll',closeTip,{passive:true});addEventListener('resize',closeTip);
+const sprCache={};
+function sprURL(name,sc){const key=name+'@'+sc;if(sprCache[key])return sprCache[key];const rows=SPR[name];const c=document.createElement('canvas');c.width=rows[0].length*sc;c.height=rows.length*sc;const x=c.getContext('2d');
+  rows.forEach((r,j)=>{[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=PAL[ch];x.fillRect(i*sc,j*sc,sc,sc);}});});return sprCache[key]=c.toDataURL();}
+const spr=(name,sc,cls)=>`<img class="spr ${cls||''}" src="${sprURL(name,sc||4)}" alt="" draggable="false">`;
+function drawSpr(x,name,px,py,sc,flip){const rows=SPR[name];const w=rows[0].length;rows.forEach((r,j)=>{[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=PAL[ch];x.fillRect(px+(flip?(w-1-i):i)*sc,py+j*sc,sc,sc);}});});}
+
+/* Cena da base: escritório, galpões, pátio de contêineres, navios e aviões chegando, caminhão saindo. */
+let sceneRaf=0, sceneT0=performance.now();
+function drawBase(){const c=$('#base');if(!c)return;cancelAnimationFrame(sceneRaf);
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const frame=()=>{renderScene(c,(performance.now()-sceneT0)/1000);if(!reduce&&document.body.contains(c))sceneRaf=requestAnimationFrame(frame);};
+  frame();
+}
+function renderScene(c,t){const x=c.getContext('2d');const s=S;const W=c.width,H=c.height,sc=3;x.imageSmoothingEnabled=false;
+  const dark=matchMedia('(prefers-color-scheme: dark)').matches&&document.documentElement.dataset.theme!=='light'||document.documentElement.dataset.theme==='dark';
+  x.fillStyle=dark?'#16213A':'#DCEBF7';x.fillRect(0,0,W,H);              // céu
+  x.fillStyle=dark?'#1C3B5A':'#9ED2F2';x.fillRect(W*0.56,H*0.62,W*0.44,H*0.38); // mar
+  x.fillStyle=dark?'#2A3B2E':'#BFE3C8';x.fillRect(0,H*0.62,W*0.56,H*0.38);      // terra
+  x.fillStyle=dark?'#3A4356':'#8E99AA';x.fillRect(0,H*0.86,W*0.56,H*0.08);      // estrada
+  x.fillStyle=dark?'#5B6B82':'#D9E1EA';x.fillRect(W*0.52,H*0.58,W*0.06,H*0.42); // cais
+  // prédios
+  drawSpr(x,'office',12,H*0.62-17*sc,sc);
+  if(hasMaino(s)){x.fillStyle='#00B386';x.fillRect(12+8*sc,H*0.62-24*sc,36,12);x.fillStyle='#06251C';x.font='800 10px "Barlow Condensed",sans-serif';x.fillText('MAINÔ',12+8*sc+3,H*0.62-24*sc+10);}
+  if(s.wh>=1)drawSpr(x,'galpao',90,H*0.62-13*sc,sc);
+  if(s.wh>=2)drawSpr(x,'galpao',90+38*sc,H*0.62-13*sc,sc);
+  if(filialOk(s)){drawSpr(x,'galpao',W*0.36,H*0.62-13*sc-30,2);x.fillStyle='#00B386';x.font='700 9px Barlow';x.fillText('FILIAL SC',W*0.36+4,H*0.62-13*sc-34);}
+  // pátio: 1 contêiner a cada 8 m³ em estoque (máx. 10)
+  const n=Math.min(10,Math.ceil(stockM3(s)/8));const px0=W*0.33,py0=H*0.62+6;
+  for(let i=0;i<n;i++){const row=Math.floor(i/5),col=i%5;drawSpr(x,i%2?'containerG':'container',px0+col*17*(sc-1)+row*6,py0+row*(-7*(sc-1))-row*2,sc-1);}
+  // navios: posição proporcional ao progresso do embarque marítimo
+  s.ships.filter(sh=>sh.modal==='fcl'||sh.modal==='lcl').slice(0,3).forEach((sh,i)=>{const lead=MODAIS[sh.modal].lead+(sh.late?1:0);const p=Math.max(0,Math.min(1,1-(sh.eta-s.turn)/Math.max(1,lead)));
+    const sx=W-110-(W*0.30)*p;const bob=Math.sin(t*2+i)*2;drawSpr(x,'ship',sx-i*14,H*0.62-9*sc+bob+i*6,sc,true);});
+  // aviões
+  s.ships.filter(sh=>sh.modal==='aereo'||sh.modal==='courier').slice(0,2).forEach((sh,i)=>{const p=(t*0.08+i*0.5)%1;drawSpr(x,'plane',W-(W+60)*p,10+i*22+Math.sin(t*3+i)*1.5,2,true);});
+  // caminhão: sai quando houve venda no último mês
+  const last=s.hist[s.hist.length-1];if(last&&last.m.units>0){const p=(t*0.12)%1;drawSpr(x,'truck',-40+(W*0.6)*p,H*0.86-7*sc+2,sc);}
+  // legenda
+  x.fillStyle=dark?'#E8EEF6':'#1A2B4A';x.font='600 11px Barlow,sans-serif';x.globalAlpha=.8;
+  x.fillText(WAREHOUSES[s.wh].name+' · '+stockM3(s).toFixed(1)+'/'+whCap(s)+' m³',12,H-6);x.globalAlpha=1;
+}
+
+/* ===================== AVATARES (5 opções, montados a partir de um template 12x20) ===================== */
+Object.assign(PAL,{D:'#5C3A21',M:'#A5673F',T:'#F7D7C4',R:'#B5452B',W:'#C9CED6',E:'#3B2416',u:'#3F5E8C',P:'#E9A0B4'});
+const AVATARS=[
+ {id:'ana',name:'Ana',skin:'D',hair:'k',style:'afro',shirt:'g',pants:'u'},
+ {id:'chen',name:'Chen',skin:'T',hair:'k',style:'short',shirt:'b',pants:'d'},
+ {id:'marina',name:'Marina',skin:'t',hair:'R',style:'long',shirt:'P',pants:'u'},
+ {id:'lucas',name:'Lucas',skin:'M',hair:'E',style:'short',shirt:'y',pants:'d',beard:true},
+ {id:'roberto',name:'Roberto',skin:'T',hair:'h',style:'short',shirt:'w',pants:'d',suit:true},
+];
+function avatarRows(a,frame){
+  let r=[
+  '...HHHHHH...','..HHHHHHHH..','..HHFFFFHH..','..HFFFFFFH..','..FFkFFkFF..','..FFFFFFFF..','..FFFkkFFF..','...FFFFFF...','....FFFF....',
+  '..CCCCCCCC..','.CCCCCCCCCC.','.FCCCCCCCCF.','.FCCCCCCCCF.','..CCCCCCCC..','..PPPPPPPP..','..PPPPPPPP..','..PPP..PPP..','..PPP..PPP..','..kkk..kkk..','............'];
+  if(a.style==='afro'){r[0]='..HHHHHHHH..';r[1]='.HHHHHHHHHH.';r[2]='.HHHFFFFHHH.';r[3]='.HHFFFFFFHH.';r[4]='.HHFkFFkFHH.';r[5]='..HFFFFFFH..';}
+  if(a.style==='long'){r[5]='.HFFFFFFFFH.';r[6]='.HFFFkkFFFH.';r[7]='.HHFFFFFFHH.';r[8]='.HH.FFFF.HH.';r[9]='.HHCCCCCCHH.';}
+  if(a.style==='bun'){r[0]='....HHHH....';r[1]='..HHHHHHHH..';}
+  if(a.glasses){r[4]='..kkkFFkkk..';}
+  if(a.beard){r[6]='..HFFkkFFH..';r[7]='...HHHHHH...';}
+  if(a.suit){r[9]='..BBCCCCBB..';r[10]='.BBBCkkCBBB.';r[11]='.FBBCkkCBBF.';r[12]='.FBBCkkCBBF.';r[13]='..BBCkkCBB..';}
+  if(frame===1){r[16]='.PPP....PPP.';r[17]='.PPP....PPP.';r[18]='.kkk....kkk.';}
+  const map={H:a.hair,F:a.skin,C:a.shirt,P:a.pants};
+  return r.map(row=>row.replace(/[HFCP]/g,ch=>map[ch]));
+}
+const rowsCache={};
+function rowsURL(rows,sc,key){if(rowsCache[key])return rowsCache[key];const c=document.createElement('canvas');c.width=rows[0].length*sc;c.height=rows.length*sc;const x=c.getContext('2d');
+  rows.forEach((r,j)=>{[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=PAL[ch];x.fillRect(i*sc,j*sc,sc,sc);}});});return rowsCache[key]=c.toDataURL();}
+const avatarImg=(a,sc)=>`<img class="spr" src="${rowsURL(avatarRows(a,0),sc,'av:'+a.id+':'+sc)}" alt="${a.name}" draggable="false">`;
+const myAvatar=()=>AVATARS[S&&S.avatar!=null?S.avatar:0];
+
+/* ===================== ESCRITÓRIO: salas no lugar de abas; o avatar caminha até a sala clicada ===================== */
+const ROOMS=[
+ {id:'mercado',name:'Inteligência de mercado',short:'Mercado',tint:'#DCEBF7',tintD:'#1B2B45'},
+ {id:'comprar',name:'Sala de compras',short:'Compras',tint:'#E8F8F3',tintD:'#143530'},
+ {id:'vendas',name:'Expedição e vendas',short:'Vendas',tint:'#FFF4D6',tintD:'#3A2E10'},
+ {id:'investir',name:'Diretoria',short:'Diretoria',tint:'#F3E8FF',tintD:'#2B1F45'},
+ {id:'financas',name:'Financeiro',short:'Financeiro',tint:'#E6FFFA',tintD:'#0F3A33'},
+];
+const FURN={
+ desk:['kkkkkkkkkkkkkkkk','keeeeeeeeeeeeeek','keeeeeeeeeeeeeek','k.kk........kk.k','k.kk........kk.k'],
+ monitor:['kkkkkkkkk','kwwwwwwwk','kwwggwwwk','kwgwwgwwk','kggwwwggk','kkkkkkkkk','...kkk...','..kkkkk..'],
+ plant:['...gg...','..gGgg..','.gGggGg.','..gggg..','...kk...','..keek..','..keek..','..kkkk..'],
+ safe:['kkkkkkkkkk','kSSSSSSSSk','kSSkkkkSSk','kSSkyykSSk','kSSkkkkSSk','kSSSSSSSSk','kkkkkkkkkk','.kk....kk.'],
+ globe:['..kkkk..','.kccbck.','kccbbcck','kcbbccck','kccbbcck','.kccbck.','..kkkk..','...kk...','..kkkk..'],
+ boxes:['.kkkkkk.kkkkkk.','.keeeek.keeeek.','.kekkek.kekkek.','.keeeek.keeeek.','.kkkkkk.kkkkkk.','kkkkkkkkkkkkkk.','keeeeeeeeeeeek.','kekkkkeeekkkek.','keeeeeeeeeeeek.','kkkkkkkkkkkkkk.'],
+ chart:['kkkkkkkkkkkk','kwwwwwwwwwwk','kwwwwwwwgwwk','kwwwwwgwgwwk','kwwgwgwwwwwk','kwgwwwwwwwwk','kkkkkkkkkkkk'],
+ cofre:['kkkkkkkk','kyyyyyyk','kykkkkyk','kykyykyk','kykkkkyk','kyyyyyyk','kkkkkkkk'],
+};
+const OFF={W:720,H:216,roomH:150,bandH:21,corrY:184,standY:98,speed:380};
+let walk=null, officeRaf=0;
+function drawRows(x,rows,px,py,sc,flip){const w=rows[0].length;rows.forEach((r,j)=>{[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=PAL[ch];x.fillRect(px+(flip?(w-1-i):i)*sc,py+j*sc,sc,sc);}});});}
+const roomCX=i=>i*(OFF.W/ROOMS.length)+OFF.W/ROOMS.length/2;
+const roomIdx=id=>Math.max(0,ROOMS.findIndex(r=>r.id===id));
+function avatarPos(){
+  if(!walk)return{x:roomCX(roomIdx(ui.room)),y:OFF.standY,frame:0,flip:false};
+  const t=(performance.now()-walk.t0)/1000*OFF.speed;const seg=walk.segs;let d=t;
+  for(let i=0;i<seg.length;i++){const [a,b]=seg[i];const len=Math.hypot(b.x-a.x,b.y-a.y);if(d<=len){const k=len?d/len:1;return{x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k,frame:Math.floor(performance.now()/140)%2,flip:b.x<a.x||(b.x===a.x&&walk.flip)};}d-=len;}
+  return{x:seg[seg.length-1][1].x,y:seg[seg.length-1][1].y,frame:0,flip:walk.flip,done:true};
+}
+function goRoom(id){
+  if(id===ui.room&&!walk){renderPanel();return;}
+  const from=avatarPos();const toX=roomCX(roomIdx(id));
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ui.room=id;walk=null;renderPanel();drawOffice();highlightRoom();return;}
+  walk={target:id,t0:performance.now(),flip:toX<from.x,segs:[[{x:from.x,y:from.y},{x:from.x,y:OFF.corrY}],[{x:from.x,y:OFF.corrY},{x:toX,y:OFF.corrY}],[{x:toX,y:OFF.corrY},{x:toX,y:OFF.standY}]]};
+  const tab=$('#tab');if(tab)tab.innerHTML=`<div class="panel walking">${avatarImg(myAvatar(),3)} <span>${myAvatar().name} está indo para <b>${ROOMS[roomIdx(id)].name}</b>…</span></div>`;
+  highlightRoom(id);
+  cancelAnimationFrame(officeRaf);
+  const total=walk.segs.reduce((a,[p1,p2])=>a+Math.hypot(p2.x-p1.x,p2.y-p1.y),0);
+  const arrive=()=>{if(!walk||walk.target!==id)return;clearTimeout(walk.timer);ui.room=id;walk=null;drawOffice();renderPanel();};
+  walk.timer=setTimeout(arrive,total/OFF.speed*1000+120); // garante a chegada mesmo se o navegador pausar a animação
+  const loop=()=>{if(!walk)return;const p=avatarPos();drawOffice();if(p.done)arrive();else officeRaf=requestAnimationFrame(loop);};
+  loop();
+}
+function highlightRoom(id){document.querySelectorAll('.rooms button').forEach(b=>b.setAttribute('aria-current',String(b.dataset.room===(id||ui.room))));}
+function drawOffice(){const c=$('#office');if(!c)return;const x=c.getContext('2d');const W=OFF.W,H=OFF.H,rw=W/ROOMS.length;x.imageSmoothingEnabled=false;
+  const dark=matchMedia('(prefers-color-scheme: dark)').matches&&document.documentElement.dataset.theme!=='light'||document.documentElement.dataset.theme==='dark';
+  x.fillStyle=dark?'#0F1A2E':'#C8D3E0';x.fillRect(0,0,W,H);
+  // corredor
+  x.fillStyle=dark?'#1C2A44':'#E6ECF3';x.fillRect(0,OFF.roomH,W,H-OFF.roomH);
+  for(let i=0;i<W;i+=24){x.fillStyle=dark?'#182540':'#DDE4EE';x.fillRect(i,OFF.roomH,12,H-OFF.roomH);}
+  const cur=walk?walk.target:ui.room;
+  ROOMS.forEach((r,i)=>{const px=i*rw;
+    x.fillStyle=dark?r.tintD:r.tint;x.fillRect(px+3,OFF.bandH,rw-6,OFF.roomH-OFF.bandH);
+    if(r.id===cur){x.strokeStyle='#00B386';x.lineWidth=3;x.strokeRect(px+4.5,OFF.bandH+1.5,rw-9,OFF.roomH-OFF.bandH-3);}
+    x.fillStyle=r.id===cur?'#00B386':'#1A2B4A';x.fillRect(px,0,rw,OFF.bandH);x.fillStyle=r.id===cur?'#06251C':'#fff';x.font='700 16px "Barlow Condensed",sans-serif';
+    let lab=r.name.toUpperCase();if(x.measureText(lab).width>rw-14)lab=r.short.toUpperCase();x.fillText(lab,px+7,OFF.bandH-5);
+    // porta
+    x.fillStyle=dark?'#1C2A44':'#E6ECF3';x.fillRect(px+rw/2-14,OFF.roomH-4,28,8);x.fillStyle='#8E99AA';x.fillRect(px+rw/2-14,OFF.roomH-4,28,2);
+    // móveis
+    const sc=3;
+    drawRows(x,FURN.desk,px+rw/2-24,60,sc);
+    if(r.id==='mercado'){drawRows(x,FURN.monitor,px+rw/2-13,38,sc);drawRows(x,FURN.chart,px+12,22,2);}
+    if(r.id==='comprar'){drawRows(x,FURN.monitor,px+rw/2-13,38,sc);drawRows(x,FURN.globe,px+rw-40,30,3);drawRows(x,SPR.container,px+10,110,2);}
+    if(r.id==='vendas'){drawRows(x,FURN.boxes,px+rw-56,98,3);drawRows(x,SPR.truck,px+8,26,2);}
+    if(r.id==='investir'){drawRows(x,FURN.plant,px+10,100,3);drawRows(x,FURN.monitor,px+rw/2-13,38,sc);drawRows(x,FURN.plant,px+rw-36,100,3);}
+    if(r.id==='financas'){drawRows(x,FURN.safe,px+rw-44,96,3);drawRows(x,FURN.cofre,px+12,30,3);drawRows(x,SPR.coin,px+16,110,2);}
+  });
+  // avatar
+  const p=avatarPos();const a=myAvatar();const rows=avatarRows(a,p.frame);
+  x.fillStyle='rgba(0,0,0,.25)';x.fillRect(p.x-14,p.y+58,28,4);
+  drawRows(x,rows,p.x-18,p.y,3,p.flip);
+}
+function officeClick(ev){const c=$('#office');const r=c.getBoundingClientRect();const x=(ev.clientX-r.left)*(OFF.W/r.width);const i=Math.max(0,Math.min(ROOMS.length-1,Math.floor(x/(OFF.W/ROOMS.length))));goRoom(ROOMS[i].id);}
+
+/* ===================== CONFIRMAÇÕES ===================== */
+function confirmar(o){openModal({icon:o.icon||'alerta',title:o.title,html:o.html,buttons:[{label:'Cancelar'},{label:o.yes||'Confirmar',cls:'primary',onClick:o.onYes}]});}
+function confirmClose(){const s=S;
+  const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
+  const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
+  confirmar({icon:'coin',title:`Fechar o mês de ${monthName(s.turn)}?`,yes:'Fechar o mês',onYes:closeMonth,html:`
+   <p><b>Vendas previstas:</b> ${vendas.length?vendas.join(', '):'nenhuma (sem estoque)'}.</p>
+   <p><b>Chegadas neste fechamento:</b> ${chegadas.length?chegadas.join(', ')+'. Saldo ao fornecedor e tributos serão pagos agora.':'nenhuma'}.</p>
+   ${s.mkt?`<p><b>Marketing:</b> ${fmt(s.mkt)} (demanda +${Math.round(mktLift(s.mkt)*100)}%).</p>`:''}<p><b>Custos fixos:</b> ${fmt(fixos)}${s.loans.giro+s.loans.finimp?` · <b>juros:</b> ${fmt(Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE))}`:''}.</p>
+   ${sem?mia('Você não tem estoque nem pedidos a caminho. O mês vai passar só com custo fixo.'):s.cash<0?mia('Seu caixa já está negativo além do limite de crédito. Se fechar negativo de novo, o banco encerra a conta.'):''}`});
+}
+
+/* ===================== RENDER ===================== */
+// Virada do mês: os indicadores do cabeçalho contam do valor antigo ao novo (~1,4 s) e piscam verde/vermelho, para o jogador sentir o que mudou.
+let statPrev=null;
+function statSnapshot(s){const lim=RADAR[s.radar.level].limit;return {cash:s.cash,dollar:s.dollar,pat:patrimonio(s),radar:lim===Infinity?NaN:s.radar.used/lim*100};}
+const STAT_FMT={cash:fmt,pat:fmt,dollar:fmtR,radar:v=>Math.round(v)+'%'};
+function animateStats(prev){if(typeof requestAnimationFrame!=='function'||typeof matchMedia!=='function'||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const els=Array.from(document.querySelectorAll('.stat b[data-k]')||[]);const D=1400;
+  const items=els.map(el=>{const k=el.dataset.k,to=parseFloat(el.dataset.v),from=prev[k];if(!isFinite(to)||!isFinite(from)||Math.abs(to-from)<0.005)return null;el.parentElement.classList.add(to>from?'up':'down');return {el,k,from,to,pre:el.dataset.pre||'',suf:el.dataset.suf?' '+el.dataset.suf:''};}).filter(Boolean);
+  if(!items.length)return;let t0=null;
+  const step=now=>{if(t0===null)t0=now;const p=Math.min(1,(now-t0)/D),e=1-Math.pow(1-p,3);
+    for(const it of items){const v=p<1?it.from+(it.to-it.from)*e:it.to;it.el.textContent=it.pre+STAT_FMT[it.k](v)+it.suf;}
+    if(p<1)requestAnimationFrame(step);else setTimeout(()=>items.forEach(it=>it.el.parentElement.classList.remove('up','down')),800);};
+  requestAnimationFrame(step);}
+function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar.used,lim=RADAR[s.radar.level].limit;
+  $('#app').innerHTML=`
+  <header class="topbar"><div class="in">
+    <div class="brand">${mainoLogo(30)}<h1>ImportTycoon</h1><small>${avatarImg(myAvatar(),2)}${esc(s.nick)} · ${SEG.name} · ${s.mode==='semanal'?'Desafio '+s.seedStr.split(':')[1]:'Desafio'}</small></div>
+    <div class="stats">
+      <div class="stat"><b>${monthName(s.turn)} · ${s.turn}/12</b><span>Mês</span></div>
+      <div class="stat ${s.cash<0?'neg':''}"><b data-k="cash" data-v="${s.cash}">${fmt(s.cash)}</b><span>Caixa</span></div>
+      <div class="stat"><b data-k="dollar" data-v="${s.dollar}" data-suf="${s.dHist.length>1?(s.dollar>s.dHist[s.dHist.length-2]?'▲':'▼'):''}">${fmtR(s.dollar)} ${s.dHist.length>1?(s.dollar>s.dHist[s.dHist.length-2]?'▲':'▼'):''}</b><span>Dólar</span></div>
+      <div class="stat"><b data-k="radar" data-v="${lim===Infinity?'':Math.round(used/lim*100)}" data-pre="${RADAR[s.radar.level].name} ">${RADAR[s.radar.level].name} ${lim===Infinity?'':Math.round(used/lim*100)+'%'}</b><span>Radar</span></div>
+      <div class="stat"><b data-k="pat" data-v="${patrimonio(s)}">${fmt(patrimonio(s))}</b><span>Patrimônio</span></div>
+      <div class="stat"><b>Nv ${level(s).n} · ${level(s).name}</b><span>Empresa${nextLevel(s)?' · '+Math.round(xp(s)/nextLevel(s).xp*100)+'% do próximo':''}</span></div>
+    </div></div></header>
+  <div class="wrap"><div class="grid"><section>
+    <div class="base" style="flex-direction:column;align-items:stretch;gap:6px"><canvas id="base" width="720" height="180"></canvas><div class="cap">${s.ships.length} embarque(s) em trânsito · ${SYSTEMS[sysLv(s)].short}${s.up.buyer?' · comprador internacional':''}</div></div>
+    <div class="panel office-wrap"><canvas id="office" width="720" height="216" aria-label="Planta do escritório: clique numa sala"></canvas><nav class="rooms" aria-label="Salas">${ROOMS.map(r=>`<button data-room="${r.id}" aria-current="${(walk?walk.target:ui.room)===r.id}">${r.name}</button>`).join('')}</nav></div>
+    <div id="tab"></div>
+    <div class="actions"><button class="primary big" id="close" ${s.over?'disabled':''}>Revisar e fechar ${monthName(s.turn)} ▸</button></div>
+  </section>
+  <aside><div class="mia"><div class="who"><div class="av">${spr('mia',3)}</div><div><b>Mia</b><br><span class="small muted">mentora de importação</span></div></div><div class="tip">${miaTip(s)}</div>
+    <div class="log"><div class="t" style="border:0">Diário da empresa</div>${s.log.slice(0,12).map(l=>`<div><span class="t">${monthName(l.turn)}</span> ${l.t}</div>`).join('')}</div></div></aside>
+  </div>${FOOTER}</div>`;
+  document.querySelectorAll('.rooms button').forEach(b=>b.onclick=()=>goRoom(b.dataset.room));
+  $('#office').onclick=officeClick;
+  $('#close').onclick=()=>{if(!S.over)revisarMes();};
+  if(walk){$('#tab').innerHTML=`<div class="panel walking">${avatarImg(myAvatar(),3)} <span>${myAvatar().name} está indo para <b>${ROOMS[roomIdx(walk.target)].name}</b>…</span></div>`;}else renderPanel();
+  drawOffice();drawBase();
+  if(statPrev){const prev=statPrev;statPrev=null;animateStats(prev);}
+}
+function renderPanel(){({mercado:renderMercado,comprar:renderComprar,vendas:renderVendas,investir:renderInvestir,financas:renderFinancas})[ui.room]();highlightRoom();}
+function renderMercado(){const s=S;const m=(s.turn-1)%12;
+  const last=s.hist[s.hist.length-1];
+  $('#tab').innerHTML=`${last?`<div class="panel" style="border-color:var(--brand)"><h2>O que aconteceu em ${last.month}</h2>${explainMonth(last)}${mia(last.m.unmet>0&&last.ratio>0.2?'Demanda maior que o estoque. Antes de subir marketing ou baixar preço, garanta a próxima chegada.':last.sales&&last.sales.some(x=>x.left>0&&x.f&&x.price/x.f.market>1.05)?'Sobrou estoque com preço acima do mercado. Baixar o preço aumenta a demanda mais que proporcionalmente, mas come margem: teste 5% por vez.':'Compare a demanda calculada com o que você comprou: é esse equilíbrio que o jogo premia.')}</div>`:''}<div class="panel"><h2>Mercado de ${monthName(s.turn)}</h2><p class="muted small">Segmento <b>${SEG.name}</b>. Sazonalidade: <b>${seasonLabel(SEASON[m])}</b>. Próximos meses: ${[1,2,3].map(i=>MONTHS[(m+i)%12]+' '+seasonLabel(SEASON[(m+i)%12])).join(' · ')}.</p>
+   <div style="margin-top:10px"><h3>Demanda estimada por mês</h3><div class="tbl"><table><tr><th>Produto</th><th class="n">Preço mercado</th>${[0,1,2].map(i=>`<th class="n">${MONTHS[(m+i)%12]}</th>`).join('')}</tr>
+   ${PRODUCTS.map(p=>`<tr><td>${p.name}</td><td class="n">${fmt(marketPrice(s,p.id))}${marketPrice(s,p.id)<p.market?' <span class="pill vermelho">-15%</span>':''}</td>${[0,1,2].map(i=>{const base=p.base*SEASON[(m+i)%12];if(sysLv(s)>=3){const dm=s.demandMod[p.id];const f=(i===0&&dm&&dm.until>=s.turn)?dm.f:1;return `<td class="n">${Math.round(base*f/10)*10}</td>`;}return `<td class="n">${Math.round(base/100)*100}<span class="muted"> ±15%</span></td>`;}).join('')}</tr>`).join('')}</table></div>
+   <p class="small muted">Hoje: marketing +${Math.round(mktLift(s.mkt||0)*100)}% · confiança ${Math.round(brand(s)*100)}% ${tip(`Unidades por mês somando todos os canais, ao preço de mercado, sem marketing e com confiança de marca cheia. Preço acima do mercado reduz a demanda; abaixo, aumenta. ${sysLv(s)>=3?'Previsão exata do Plano Gestão.':'Estimativa grosseira (±15%): o Plano Gestão da Mainô mostra a previsão exata.'}`)}</p></div>
+   <div style="margin-top:14px"><h3>Dólar (PTAX do mês)</h3><canvas id="dchart" width="400" height="120" style="width:100%;max-width:520px;height:auto"></canvas></div></div>
+   <div class="panel"><h3>Tributos vigentes</h3><div class="tbl"><table><tr><th>Produto</th><th>NCM</th><th class="n">II</th><th class="n">IPI</th></tr>${PRODUCTS.map(p=>`<tr><td>${p.name}</td><td>${p.ncm.find(n=>n.ok).c}</td><td class="n">${pct(p.ii+s.tax.iiExtra)}</td><td class="n">${pct(p.ipi)}</td></tr>`).join('')}</table></div><p class="small" style="margin-top:8px">PIS/COFINS-importação 2,1% + 9,65% · ICMS 18% (SP, por dentro) · AFRMM 8% do frete marítimo de longo curso · Taxa Siscomex R$ 115,67 por DUIMP + R$ 38,56 por adição.${s.flags.aliqUntil?` <span class="warn">II elevado em 4 pontos até ${monthName(s.flags.aliqUntil)}.</span>`:''}</p>
+   ${mia('Alíquotas de II e IPI da TEC e da TIPI vigentes para cada NCM. Somadas ao PIS/COFINS e ao ICMS por dentro, quase dobram o valor FOB. Simule na aba Comprar antes de fechar qualquer pedido.')}</div>`;
+  const c=$('#dchart'),x=c.getContext('2d');const h=s.dHist;const mn=Math.min(...h)*0.97,mx=Math.max(...h)*1.03;const fg=getComputedStyle(document.body).color;
+  x.clearRect(0,0,400,120);x.strokeStyle='#00B386';x.lineWidth=2.5;x.beginPath();h.forEach((v,i)=>{const px=30+i*(350/11),py=105-(v-mn)/(mx-mn)*90;i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();
+  x.fillStyle=fg;x.font='12px Barlow';h.forEach((v,i)=>{if(i===h.length-1||i%3===0){const px=30+i*(350/11),py=105-(v-mn)/(mx-mn)*90;x.beginPath();x.arc(px,py,3,0,7);x.fill();x.fillText(v.toFixed(2),Math.min(px-12,360),py-8);}});
+  x.fillStyle=fg;x.globalAlpha=.6;x.fillText(MONTHS[0],28,118);x.fillText(MONTHS[11],365,118);x.globalAlpha=1;
+}
+function renderComprar(){const s=S,b=ui.buy;if(!P(b.pid))b.pid=PRODUCTS[0].id;const pv=buyPreview();const sup=SUP(b.sid),p=P(b.pid);
+  $('#tab').innerHTML=`<div class="panel"><h2>Comprar do exterior</h2>
+   <h3 style="margin-top:10px">1. Produto</h3><div class="cards">${PRODUCTS.map(q=>`<div class="card ${b.pid===q.id?'on':''}" data-pid="${q.id}">${spr(q.id,3)}<h3>${q.name}</h3><div class="m">FOB ${fmtU(q.fob)} · ${(q.m3*1000).toFixed(1)} L/un · mercado ${fmt(q.market)}</div><div class="m">${stk(s,q.id).ncm?'NCM '+stk(s,q.id).ncm:'NCM a classificar'} · estoque ${stk(s,q.id).qty}</div>${q.anu?`<div class="m" style="margin-top:4px"><span class="pill ${lic(s,q.id).status==='ok'?'verde':lic(s,q.id).status==='pending'?'amarelo':'vermelho'}">${lic(s,q.id).status==='ok'?q.anu.org+' ok':lic(s,q.id).status==='pending'?q.anu.org+' em análise até '+monthName(lic(s,q.id).ready):'exige '+q.anu.org}</span></div>`:''}</div>`).join('')}</div>
+   <h3 style="margin-top:14px">2. Fornecedor</h3><div class="cards">${SUPPLIERS.map((f,i)=>{const rs=relStatus(s,f.id);return `<div class="card ${b.sid===f.id?'on':''}" data-sid="${f.id}">${spr('sup'+(i+1),3)}<h3>${f.flag} ${f.name}</h3><div class="m">Preço ${f.mult<1?'-15%':f.mult>1?'+22%':'de lista'} · MOQ ${moqOf(s,f)} · sinal ${Math.round(f.deposit*100)}%</div><div class="m">Confiabilidade ${f.rel>=0.95?'alta':f.rel>=0.85?'boa':'baixa'}</div>${rs?`<div class="m" style="margin-top:4px"><span class="pill ${rs.k==='blocked'?'vermelho':rs.k==='upset'?'amarelo':rs.k==='partner'?'verde':'info'}">${rs.t}</span></div>`:''}</div>`;}).join('')}</div>
+   <h3 style="margin-top:14px">3. Quantidade, modal e câmbio</h3>
+   <div class="row" style="margin-top:8px"><label class="field">Unidades<input id="qty" type="number" min="0" step="50" value="${b.qty}"></label>${sysLv(s)>=4?`<button id="sugerir" title="Cobre 2 meses de venda após a chegada, descontando estoque e trânsito">Sugerir quantidade</button>`:''}
+   <label class="field">Modal ${tip(Object.values(MODAIS).map(M=>`<b>${M.name}</b>: ${M.desc}`).join('<br>'))}<select id="modal">${Object.entries(MODAIS).map(([k,M])=>`<option value="${k}" ${b.modal===k?'selected':''}>${M.name}</option>`).join('')}</select></label>
+   <label class="field">Câmbio ${tip('<b>Pagar na chegada</b>: o saldo (70% ou 50%) é convertido pelo dólar do dia em que a carga chega. Se o dólar subir, você paga mais.<br><b>Travar hoje</b>: fecha o câmbio agora com 1,2% de spread e elimina o risco. Vale como seguro quando o dólar está nervoso.')}<select id="lock"><option value="0" ${!b.lock?'selected':''}>Pagar na chegada (dólar do dia)</option><option value="1" ${b.lock?'selected':''}>Travar hoje a ${fmtR(s.dollar*1.012)} (+1,2%)</option></select></label>
+   <label class="field">Seguro ${tip('Seguro de carga internacional custa 0,5% do valor FOB e cobre avaria e extravio no transporte. Não cobre defeito de fabricação nem produto errado: isso é papel da inspeção.')}<select id="seguro"><option value="1" ${b.seguro?'selected':''}>Com seguro (0,5%)</option><option value="0" ${!b.seguro?'selected':''}>Sem seguro</option></select></label>
+   <label class="field">Inspeção ${tip(`Inspetor confere quantidade, modelo e qualidade na fábrica antes do embarque, por ${fmt(INSP_COST)} por embarque. Elimina o risco de lote com defeito, produto errado ou carga curta (<b>${Math.round(riskNoInsp(sup)*100)}%</b> neste fornecedor). Lote com defeito também derruba a confiança da marca em 8 pontos (devoluções e avaliações); produto fora da especificação, 4 pontos. Fornecedor barato no primeiro pedido pode sumir com o sinal: ${Math.round(riskScam(s,sup)*100)}% sem inspeção, ${Math.round(riskScam(s,sup)*25)}% com (o inspetor visita a fábrica).`)}<select id="insp"><option value="1" ${b.insp?'selected':''}>Com inspeção (${fmt(INSP_COST)})</option><option value="0" ${!b.insp?'selected':''}>Sem inspeção</option></select></label></div>
+   ${!b.insp&&riskNoInsp(sup)>=0.1?`<p class="small warn" style="margin-top:6px">Sem inspeção: <b>${Math.round(riskNoInsp(sup)*100)}%</b> de chance de incidente no lote${riskScam(s,sup)?` e ${Math.round(riskScam(s,sup)*100)}% de o fornecedor sumir com o sinal`:''}.</p>`:''}
+   <p class="small muted" style="margin-top:6px">Volume: <b>${pv.m3.toFixed(1)} m³</b> · Chegada: <b>${monthName(pv.eta)}</b>.</p>
+   ${(()=>{const cur=b.modal;const rows=Object.keys(MODAIS).map(k=>{b.modal=k;const q=buyPreview();return{k,q};});b.modal=cur;const best=Math.min(...rows.filter(r=>!r.q.err).map(r=>r.q.c.total/r.q.sh.qty));return `<div class="tbl" style="margin-top:8px"><table><tr><th>Modal</th><th>Chega</th><th class="n">Frete</th><th class="n">Custo/un.</th><th>Prazo vs. preço</th></tr>${rows.map(r=>`<tr${r.k===cur?' style="font-weight:600"':''}><td>${MODAIS[r.k].name.split(' (')[0]}</td><td>${r.q.err?'<span class="muted">não disponível</span>':monthName(r.q.eta)+(MODAIS[r.k].lead===0?' (este mês)':'')}</td><td class="n">${r.q.err?'–':fmt(r.q.sh.freight)}</td><td class="n">${r.q.err?'–':fmtR(r.q.c.total/r.q.sh.qty)}</td><td class="small muted">${r.q.err?(r.q.err.startsWith(sup.name)?'fornecedor não atende':r.q.err):(r.q.c.total/r.q.sh.qty<=best*1.001?'mais barato':'+'+Math.round((r.q.c.total/r.q.sh.qty/best-1)*100)+'% por unidade')}</td></tr>`).join('')}</table></div>`;})()}
+   ${pv.err?`<p class="bad" style="margin-top:8px">${pv.err}</p>`:`<div style="margin-top:10px"><h3>Simulação do custo nacionalizado (canal verde)</h3>${cascadeHTML(pv.c,pv.sh.qty)}
+   <p class="small">Sinal agora: <b>${fmt(pv.sinal)}</b> · Saldo + tributos na chegada: <b>${fmt(pv.c.total-pv.c.fobBRL+pv.sh.fobUSD*(1-sup.deposit)*pv.rate)}</b> · Margem ao preço de mercado: <b class="${marketPrice(s,b.pid)*0.82>pv.c.total/pv.sh.qty?'good':'bad'}">${Math.round((marketPrice(s,b.pid)*0.82/(pv.c.total/pv.sh.qty)-1)*100)}%</b> (após comissão de 18%)</p>
+   ${(()=>{const chegada=pv.c.total-pv.c.fobBRL+pv.sh.fobUSD*(1-sup.deposit)*pv.rate;const outros=s.ships.reduce((a,x)=>a+x.fobUSD*(1-SUP(x.sid).deposit)*(x.lockRate||s.dollar)+x.fobUSD*s.dollar*1.1,0);const sobra=s.cash-pv.sinal-outros-FIXED_COST*MODAIS[b.modal].lead;return sobra<chegada?`<p class="warn small" style="margin-top:8px">Atenção: na chegada você vai precisar de <b>${fmt(chegada)}</b> e, descontando sinal, pedidos já em trânsito e custos fixos, teria cerca de <b>${fmt(Math.max(0,sobra))}</b>. Venda estoque, reduza o pedido ou garanta crédito antes.</p>`:'';})()}<div class="actions"><button class="primary" id="buy" ${s.cash<pv.sinal?'disabled':''}>Negociar e fechar pedido</button></div>${s.cash<pv.sinal?'<p class="bad small">Caixa insuficiente para o sinal.</p>':''}</div>`}
+   ${p.anu&&lic(s,b.pid).status!=='ok'?`<div class="panel" style="margin-top:10px;border-color:var(--warn)"><h3>Tratamento administrativo: ${p.anu.org}</h3><p class="small">${p.anu.label}${p.anu.pre?' (pré-embarque: sem ela o pedido não sai)':' (não é LI: você pode embarcar, mas carga que chega sem a certificação fica retida um mês e paga R$ 3.000 de armazenagem)'}. ${lic(s,b.pid).status==='pending'?`Em análise, previsão <b>${monthName(lic(s,b.pid).ready)}</b>.`:`Custo ${fmt(p.anu.cost)}, prazo ${p.anu.lead} mês(es), ${Math.round(p.anu.risk*100)}% de chance de exigência.`}</p>${lic(s,b.pid).status==='none'?`<div class="actions"><button class="primary" id="lic" ${s.cash<p.anu.cost?'disabled':''}>Solicitar ${p.anu.org}</button></div>`:''}${mia(SEG.id==='beleza'?'Anvisa é o órgão anuente mais exigente: rotulagem em português, dossiê técnico e responsável técnico. Comece a regularização antes de pensar em pedido.':SEG.id==='pet'?'Ração importada passa pelo MAPA: registro do produto e do estabelecimento importador. É o único item do segmento com anuência.':'Equipamento com Bluetooth ou Wi-Fi precisa de homologação Anatel; carregador, de certificação Inmetro. Sem isso a Receita retém a carga.')}</div>`:''}
+   </div>
+   ${s.ships.length?`<div class="panel"><h3>Em trânsito</h3><div class="tbl"><table><tr><th>Produto</th><th class="n">Un.</th><th>Modal</th><th>Fornecedor</th><th class="n">FOB</th><th>Câmbio</th><th>Chega</th></tr>${s.ships.map(x=>`<tr><td>${P(x.pid).name}</td><td class="n">${x.qty}</td><td>${MODAIS[x.modal].name.split(' (')[0]}</td><td>${SUP(x.sid).flag} ${SUP(x.sid).name.split(' ')[0]}</td><td class="n">${fmtU(x.fobUSD)}</td><td>${x.lockRate?'travado '+fmtR(x.lockRate):'do dia'}</td><td>${monthName(x.eta)}${x.held?' <span class="pill vermelho">retida</span>':''}${x.late?' <span class="pill amarelo">atrasou</span>':''}</td></tr>`).join('')}</table></div></div>`:''}`;
+  document.querySelectorAll('[data-pid]').forEach(e=>e.onclick=()=>{b.pid=e.dataset.pid;renderGame();});
+  document.querySelectorAll('[data-sid]').forEach(e=>e.onclick=()=>{b.sid=e.dataset.sid;if(b.qty<moqOf(s,SUP(b.sid)))b.qty=moqOf(s,SUP(b.sid));renderGame();});
+  $('#qty').onchange=e=>{b.qty=+e.target.value;renderGame();};
+  const sg=$('#sugerir');if(sg)sg.onclick=()=>{const eta=s.turn+MODAIS[b.modal].lead;let need=0;for(let m=s.turn;m<=Math.min(12,eta+1);m++){const save=s.turn;s.turn=m;const d=demandFor(s,b.pid,stk(s,b.pid).price,'ambos',1);s.turn=save;need+=Math.round(d.mp+d.b2b);}const pipe=stk(s,b.pid).qty+s.ships.filter(x=>x.pid===b.pid).reduce((a,x)=>a+x.qty,0);b.qty=Math.max(SUP(b.sid).moq,Math.round((need-pipe)/50)*50);renderGame();};$('#modal').onchange=e=>{b.modal=e.target.value;renderGame();};
+  $('#lock').onchange=e=>{b.lock=e.target.value==='1';renderGame();};const ins=$('#insp');if(ins)ins.onchange=e=>{b.insp=e.target.value==='1';renderGame();};$('#seguro').onchange=e=>{b.seguro=e.target.value==='1';renderGame();};
+  const bb=$('#buy');if(bb)bb.onclick=startBuy;const lb=$('#lic');if(lb)lb.onclick=()=>solicitarLicenca(b.pid);
+}
+function renderVendas(){const s=S;
+  $('#tab').innerHTML=`<div class="panel"><h2>Estoque e canais de venda ${tip('<b>Marketplace</b> vende à vista com 18% de comissão e absorve até 55% da demanda.<br><b>B2B</b> (atacado) compra bem só até 85% do preço de mercado e paga em 60 dias, com risco de inadimplência.<br>A venda acontece no fechamento do mês.')}</h2>${sysLv(s)===0?'<p class="warn small" style="margin-top:6px">Sem sistema de gestão você não emite NF-e: o marketplace está bloqueado e cada mês com venda tem 20% de chance de fiscalização (multa de R$ 8.000 e operação parada por 30 dias), e só metade dos clientes B2B compra sem nota. Contrate um sistema na Diretoria.</p>':''}${s.flags.parado===s.turn?'<p class="bad small" style="margin-top:6px">Operação parada pela fiscalização: nenhuma venda neste mês.</p>':''}
+   <div class="tbl dense" style="margin-top:10px"><table><tr><th>Produto</th><th class="n">Estoque</th><th class="n">Custo méd.</th><th class="n">Mercado</th><th>Seu preço</th><th>Canal</th><th class="n">Previsão</th><th>Cobertura ${tip('Quantos meses o estoque atual cobre à demanda prevista, e quando chega o próximo embarque. Vermelho: vai faltar antes da próxima chegada. Marítimo leva 2 meses, aéreo 1.')}</th></tr>
+   ${PRODUCTS.map(p=>{const st=stk(s,p.id);const d=demandFor(s,p.id,st.price,st.channel,1);const prev=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));const mg=st.avg?Math.round((st.price*(st.channel==='b2b'?1:0.82)/st.avg-1)*100):null;
+     return `<tr><td>${spr(p.id,2)} ${p.name}</td><td class="n">${st.qty}</td><td class="n">${st.avg?fmtR(st.avg):'–'}</td><td class="n">${fmt(marketPrice(s,p.id))}</td>
+     <td><input type="number" min="1" step="1" value="${st.price}" data-price="${p.id}" style="width:5.2em"></td>
+     <td><select data-ch="${p.id}"><option value="ambos" ${st.channel==='ambos'?'selected':''}>Ambos</option><option value="marketplace" ${st.channel==='marketplace'?'selected':''} ${sysLv(s)===0?'disabled':''}>Marketplace${sysLv(s)===0?' (exige sistema)':''}</option><option value="b2b" ${st.channel==='b2b'?'selected':''}>B2B</option></select></td>
+     <td class="n">${st.qty?`${prev} un.<br><span class="small ${mg!==null&&mg<0?'bad':'muted'}">${mg!==null?'margem '+mg+'%':''}</span>`:'<span class="muted">sem estoque</span>'}</td>${(()=>{const c=coverage(s,p.id);if(!st.qty&&!c.transitQty)return '<td class="muted small">–</td>';const falta=c.next==null?(st.qty>0&&c.months<2.2):(c.next>s.turn+Math.ceil(c.months)&&st.qty>0);return `<td class="small ${falta?'bad':c.months>=4?'warn':'good'}">${st.qty?(c.months>=12?'12+':c.months.toFixed(1))+' mês(es)':'0'}${c.transitQty?`<br><span class="muted">+${c.transitQty} em ${monthName(c.next)}</span>`:''}${falta?'<br>vai faltar':c.months>=4&&st.qty?'<br>estoque alto':''}</td>`;})()}</tr>`;}).join('')}</table></div>
+   ${mia('Margem é preço de venda líquido de comissão sobre o custo nacionalizado, não sobre o FOB. Se estiver negativa, você está pagando pra vender.')}</div>
+   <div class="panel"><h3>Projeção de estoque mês a mês ${tip('Quanto vai sobrar de cada produto no fim de cada mês se você não comprar mais nada: estoque de hoje menos a venda prevista, mais o que já está a caminho. Use junto com o lead time: marítimo chega em 2 meses, aéreo em 1.')}</h3>${stockProjHTML(s)}</div>
+   <div class="panel"><h3>Marketing e confiança da marca ${tip('<b>Marketing</b> aumenta a demanda de todos os produtos com retorno decrescente: R$ 6 mil dão +50%, R$ 18 mil dão +75%, teto de +100%. Cobrado no fechamento.<br><b>Confiança da marca</b> multiplica a demanda. Cai até 10 pontos por mês quando mais de 20% da demanda fica sem estoque (piso de 60%), 8 pontos quando um lote chega com defeito e 4 quando chega fora da especificação; sobe 10 pontos por mês em que você atende mais de 90%. Marketing sem estoque destrói confiança.')}</h3>
+   <div class="row" style="margin-top:8px;align-items:flex-start"><div style="flex:1;min-width:240px"><label class="field">Orçamento de marketing por mês<input id="mkt" type="range" min="0" max="${MKT_MAX}" step="1000" value="${s.mkt||0}" style="width:100%"></label>
+   <p class="small" style="margin-top:4px"><b>${fmt(s.mkt||0)}/mês</b> · demanda <b>+${Math.round(mktLift(s.mkt||0)*100)}%</b></p></div>
+   <div style="flex:1;min-width:220px"><div class="small muted" style="text-transform:uppercase;letter-spacing:.06em">Confiança da marca</div><div class="bar ${brand(s)<0.8?'hot':''}" style="margin-top:6px"><i style="width:${Math.round(brand(s)*100)}%"></i></div><p class="small" style="margin-top:4px"><b>${Math.round(brand(s)*100)}%</b> da demanda potencial${brand(s)<1?' · <span class="warn">clientes decepcionados</span>':''}</p></div></div>
+   ${(()=>{const tot=PRODUCTS.reduce((a,p)=>{const st=stk(s,p.id);if(!(st.avg>0||st.qty>0))return a;const d=demandFor(s,p.id,st.price,st.channel,1);return a+Math.round(d.mp)+Math.round(d.b2b);},0);const est=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);return tot>est*1.15&&tot>0?`<p class="warn small" style="margin-top:6px">Atenção: a demanda prevista para este mês é de ${tot} unidades e você tem ${est} em estoque. Cada cliente que não encontra o produto reduz a confiança da marca.</p>`:'';})()}
+   ${mia('Marketing cria demanda; só o estoque entrega. Se você anuncia e não tem produto, perde a venda e a confiança: a demanda cai e demora meses pra voltar. Regule o orçamento pelo que vai ter em estoque, não pelo que gostaria de vender.')}</div>
+   ${s.recv.length?`<div class="panel"><h3>A receber (B2B)</h3><div class="tbl"><table>${s.recv.map(r=>`<tr><td>${r.p}</td><td class="n">${fmt(r.amount)}</td><td>vence em ${monthName(r.due)}</td></tr>`).join('')}</table></div></div>`:''}`;
+  const mk=$('#mkt');if(mk){mk.oninput=()=>{s.mkt=+mk.value;};mk.onchange=()=>{s.mkt=+mk.value;log(s,`Marketing ajustado para ${fmt(s.mkt)}/mês.`);renderGame();};}
+  document.querySelectorAll('[data-price]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.price).price=Math.max(1,+e.target.value||1);renderGame();});
+  document.querySelectorAll('[data-ch]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.ch).channel=e.target.value;renderGame();});
+}
+function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];
+  $('#tab').innerHTML=`<div class="panel"><h2>Investir e expandir</h2>
+   <h3 style="margin-top:10px">Armazenagem</h3><div class="cards">${WAREHOUSES.map((w,i)=>`<div class="card ${s.wh===i?'on':''}"><h3>${w.name} ${tip(w.desc)}</h3><div class="m">${w.cap} m³ · ${w.rent?fmt(w.rent)+'/mês':'sem aluguel'}</div>${i>s.wh?`<button style="margin-top:8px" data-wh="${i}">Alugar</button>`:s.wh===i?'<div class="m good" style="margin-top:8px">atual</div>':''}</div>`).join('')}</div>
+   <h3 style="margin-top:14px">Sistema de gestão</h3><p class="small muted">${sysLv(s)===0?'Sem sistema você não emite nota: marketplace bloqueado e risco de a fiscalização parar sua operação.':'Plano atual: '+SYSTEMS[sysLv(s)].name+'.'}</p><div class="cards" style="margin-top:8px">
+    ${SYSTEMS.slice(1).map(t=>`<div class="card ${sysLv(s)===t.lv?'on':''}">${t.lv>=2?spr('mia',2):spr('box',2)}<h3>${t.name} ${tip(t.desc)}</h3><div class="m">${fmt(t.fee)}/mês</div>${sysLv(s)===t.lv?'<div class="m good" style="margin-top:8px">plano atual</div>':sysLv(s)>t.lv?'<div class="m muted" style="margin-top:8px">superado</div>':`<button class="${t.lv>=2?'primary':''}" style="margin-top:8px" data-sys="${t.lv}">${sysLv(s)>0?'Fazer upgrade':'Contratar'}</button>`}</div>`).join('')}
+    </div><h3 style="margin-top:14px">Equipe</h3><div class="cards" style="margin-top:8px">
+    <div class="card ${s.up.buyer?'on':''}"><h3>Comprador internacional ${tip('Fala a língua do fornecedor: toda negociação fecha automaticamente com o melhor desconto, sem o minigame. Custo fixo mensal até o fim do ano.')}</h3><div class="m">${fmt(BUYER_FEE)}/mês</div>${s.up.buyer?'<div class="m good" style="margin-top:8px">contratado</div>':'<button style="margin-top:8px" id="buyer">Contratar</button>'}</div>
+   </div>
+   <h3 style="margin-top:14px">Nível da empresa</h3><p class="small">Nível <b>${level(s).n} · ${level(s).name}</b>. ${level(s).perk}</p>${nextLevel(s)?`<div class="bar" style="max-width:420px;margin-top:6px"><i style="width:${Math.min(100,Math.round(xp(s)/nextLevel(s).xp*100))}%"></i></div><p class="small muted" style="margin-top:4px">${fmt(xp(s))} de ${fmt(nextLevel(s).xp)} de experiência para <b>${nextLevel(s).name}</b> (${nextLevel(s).perk}). Experiência = faturamento acumulado + ${fmt(MARCO_XP)} por marco.</p>`:'<p class="small good">Nível máximo alcançado.</p>'}
+   <h3 style="margin-top:14px">Marcos</h3><div class="tbl"><table>${MARCOS.map(mc=>`<tr><td>${(s.marcos||[]).includes(mc.id)?'<span class="pill verde">feito</span>':'<span class="pill info">pendente</span>'}</td><td>${mc.name}</td></tr>`).join('')}</table></div>
+   <h3 style="margin-top:14px">Expansão</h3><div class="cards" style="margin-top:8px"><div class="card ${filialOk(s)?'on':''}">${spr('office',2)}<h3>${FILIAL.name} ${tip(`Benefício fiscal estadual (TTD 409): o ICMS da importação é diferido no desembaraço e você paga carga efetiva de 2,6% nas vendas, em vez de 18% por dentro no custo. Soma ${FILIAL.cap} m³ de galpão. Exige ${FILIAL.reqImports} importações concluídas e Radar Limitada. Só compensa para quem importa mais de uns R$ 25 mil por mês: abaixo disso o custo fixo come a economia. Com a Reforma Tributária o benefício cai gradualmente de 2029 a 2032.`)}</h3><div class="m">${fmt(FILIAL.setup)} de implantação + ${fmt(FILIAL.rent)}/mês · pronta em ${FILIAL.lead} meses</div>${filialOk(s)?'<div class="m good" style="margin-top:8px">em operação</div>':s.filial&&s.filial.status==='setup'?'<div class="m warn" style="margin-top:8px">em implantação, operação em '+monthName(s.filial.ready)+'</div>':`<button class="primary" style="margin-top:8px" id="filial" ${s.imports<FILIAL.reqImports||s.radar.level<FILIAL.reqRadar||s.cash<FILIAL.setup?'disabled':''}>Abrir filial</button>${s.imports<FILIAL.reqImports||s.radar.level<FILIAL.reqRadar?'<div class="m muted" style="margin-top:6px">Exige histórico: '+FILIAL.reqImports+' importações e Radar Limitada.</div>':''}`}</div></div>
+   ${mia('Santa Catarina, Espírito Santo e outros estados concedem TTDs que diferem o ICMS da importação e aplicam crédito presumido na saída. O custo de nacionalização cai bastante, mas exige estrutura real no estado e deixa de valer com a Reforma Tributária.')}
+   <h3 style="margin-top:14px">Radar Siscomex (habilitação)</h3><p class="small">Modalidade atual: <b>${RADAR[s.radar.level].name}</b> · usado neste semestre ${fmtU(s.radar.used)} CIF de ${RADAR[s.radar.level].limit===Infinity?'ilimitado':fmtU(RADAR[s.radar.level].limit)}.</p>
+   ${RADAR[s.radar.level].limit!==Infinity?`<div class="bar ${s.radar.used/RADAR[s.radar.level].limit>0.8?'hot':''}" style="max-width:360px;margin-top:6px"><i style="width:${Math.min(100,s.radar.used/RADAR[s.radar.level].limit*100)}%"></i></div>`:''}
+   ${nx?`<p class="small" style="margin-top:8px">Próxima: <b>modalidade ${nx.name}</b> (${nx.limit===Infinity?'sem limite':'até '+fmtU(nx.limit)+' CIF por semestre'}). Custo ${fmt(nx.cost)} em consultoria e revisão da capacidade financeira estimada pela Receita. Exige ${nx.req} importação(ões) concluída(s).</p><button style="margin-top:8px" id="radar" ${s.imports<nx.req||s.cash<nx.cost?'disabled':''}>Habilitar Radar ${nx.name}</button>`:'<p class="small good">Radar Ilimitado. Sem teto de volume.</p>'}
+   ${mia('Radar é a habilitação da Receita pra operar no Siscomex (IN RFB 1.984/2020). A modalidade Expressa sai automática e limita US$ 50 mil CIF por semestre: dá pra um ou dois pedidos. Limitada vai a US$ 150 mil; Ilimitada depende da capacidade financeira estimada.')}</div>`;
+  document.querySelectorAll('[data-wh]').forEach(e=>e.onclick=()=>buyWarehouse(+e.dataset.wh));
+  document.querySelectorAll('[data-sys]').forEach(b=>b.onclick=()=>contratarSistema(+b.dataset.sys));const bu=$('#buyer');if(bu)bu.onclick=buyBuyer;const r=$('#radar');if(r)r.onclick=upRadar;const fb=$('#filial');if(fb)fb.onclick=abrirFilial;
+}
+function projectCash(s){const rows=[];let cash=s.cash;const stock=Object.fromEntries(PRODUCTS.map(p=>[p.id,stk(s,p.id).qty]));const recv={};for(const r of s.recv){recv[r.due]=(recv[r.due]||0)+r.amount;}
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const juros=Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE);const saveTurn=s.turn;
+  for(let m=s.turn;m<=12;m++){s.turn=m;let vendas=0,b2bNew=0,ttd=0;
+    for(const p of PRODUCTS){const st=stk(s,p.id);if(stock[p.id]<=0)continue;const d=demandFor(s,p.id,st.price,st.channel,1);let left=stock[p.id];const qMp=Math.min(left,Math.round(d.mp));left-=qMp;const qB=Math.min(left,Math.round(d.b2b));left-=qB;stock[p.id]=left;vendas+=qMp*st.price*0.82;b2bNew+=qB*st.price;if(filialOk(s)&&(s.filial.ready||0)<=m)ttd+=Math.round((qMp+qB)*st.price*FILIAL.icmsEfetivo);}
+    if(b2bNew>0)recv[m+2]=(recv[m+2]||0)+b2bNew;
+    let chegadas=0;for(const sh of s.ships.filter(x=>x.eta===m)){const sup=SUP(sh.sid);const c=cascade(s,sh,s.dollar,'verde');chegadas+=sh.fobUSD*(1-sup.deposit)*(sh.lockRate||s.dollar)+(c.total-c.fobBRL);stock[sh.pid]=(stock[sh.pid]||0)+sh.qty;}
+    const recebidos=recv[m]||0;const ent=vendas+recebidos;const sai=chegadas+fixos+juros+ttd;cash+=ent-sai;
+    rows.push({turn:m,month:monthName(m),vendasVista:Math.round(vendas),recebidos:Math.round(recebidos),chegadas:Math.round(chegadas),fixos,juros,ttd,cashEnd:Math.round(cash),prev:true});}
+  s.turn=saveTurn;return rows;}
+function projectStock(s){const stock=Object.fromEntries(PRODUCTS.map(p=>[p.id,stk(s,p.id).qty]));const out=[];const saveTurn=s.turn;
+  for(let m=s.turn;m<=12;m++){s.turn=m;const row={turn:m,month:monthName(m),prods:{}};
+    for(const p of PRODUCTS){const st=stk(s,p.id);const start=stock[p.id];const d=demandFor(s,p.id,st.price,st.channel,1);const dem=Math.round(d.mp)+Math.round(d.b2b);const sold=Math.min(start,dem);let end=start-sold;
+      if(SEG.validade&&end>0)end-=Math.floor(end*SEG.validade);
+      const arr=s.ships.filter(x=>x.pid===p.id&&x.eta===m).reduce((a,x)=>a+x.qty,0);const l=lic(s,p.id);const licAt=!p.anu||l.status==='ok'||(l.status==='pending'&&l.ready<=m);const held=arr>0&&!licAt;
+      end+=held?0:arr;stock[p.id]=end;row.prods[p.id]={start,dem,sold,unmet:Math.max(0,dem-sold),arr:held?0:arr,held,end};}
+    out.push(row);}
+  s.turn=saveTurn;return out;}
+function stockProjHTML(s){const rows=projectStock(s);const active=PRODUCTS.filter(p=>stk(s,p.id).qty>0||s.ships.some(x=>x.pid===p.id));if(!active.length)return '<p class="small muted">Sem estoque nem embarques a caminho: a projeção aparece depois do primeiro pedido.</p>';
+  return `<div class="tbl"><table><tr><th>Produto</th>${rows.map(r=>`<th class="n">${r.month}</th>`).join('')}</tr>
+  ${active.map(p=>`<tr><td>${spr(p.id,2)} ${p.name}</td>${rows.map(r=>{const c=r.prods[p.id];const cls=c.unmet>0?'bad':c.end===0?'muted':c.end>c.dem*4&&c.dem>0?'warn':'';return `<td class="n small ${cls}"><b>${c.end}</b>${c.arr?`<br><span class="good">+${c.arr}</span>`:c.held?'<br><span class="bad">retida</span>':''}${c.unmet>0?`<br><span class="bad">falta ${c.unmet}</span>`:''}</td>`;}).join('')}</tr>`).join('')}</table></div>
+  <p class="small muted" style="margin-top:6px">Estoque no fim de cada mês, considerando a demanda prevista aos preços, canais, marketing e confiança de hoje, as chegadas a caminho (em verde, somadas depois da venda do mês) e a validade. Vermelho: clientes vão faltar produto. Não inclui compras novas.</p>`;}
+function cashflowHTML(s){const real=s.hist.map(h=>({turn:h.turn,month:h.month,...(h.cf||{}),cashStart:h.cashStart,cashEnd:h.m.cashEnd,prev:false}));const proj=projectCash(s);const all=real.concat(proj);
+  const minP=proj.reduce((a,r)=>r.cashEnd<a.cashEnd?r:a,proj[0]||{cashEnd:Infinity});
+  const td=(v,cls)=>`<td class="n ${cls||''}">${v?fmt(v):'–'}</td>`;
+  return `<div class="tbl dense"><table><tr><th>Mês</th><th class="n">À vista</th><th class="n">Recebidos</th><th class="n">Crédito/FIDC</th><th class="n">Chegadas</th><th class="n">Sinais+invest.</th><th class="n">Fixos+juros</th><th class="n">Outros</th><th class="n">Caixa final</th></tr>
+  ${all.map(r=>`<tr class="${r.prev?'prev':''}"><td>${r.month}${r.prev?' <span class="pill info">previsto</span>':''}</td>${td(r.vendasVista)}${td(r.recebidos)}${r.prev?'<td class="n">–</td>':td((r.credito||0)+(r.antecip||0),(r.credito||0)+(r.antecip||0)<0?'bad':'')}${td(r.chegadas,'bad')}${r.prev?'<td class="n">–</td>':td((r.sinais||0)+(r.invest||0),'bad')}${td((r.fixos||0)+(r.juros||0)+(r.ttd||0),'bad')}${r.prev?'<td class="n">–</td>':td(r.outros,(r.outros||0)<0?'bad':'')}<td class="n" style="font-weight:700" ${r.cashEnd<0?'class="n bad"':''}><span class="${r.cashEnd<0?'bad':''}">${fmt(r.cashEnd)}</span></td></tr>`).join('')}</table></div>
+  <p class="small muted" style="margin-top:6px">Realizado: o que de fato entrou e saiu. Previsto: recebíveis já contratados, embarques a caminho (saldo e tributos ao dólar de hoje), vendas do estoque atual e das chegadas aos preços de hoje, custos fixos, marketing e juros atuais; não inclui novas compras nem eventos. "Outros" = multas, perdas, pedidos à vista de eventos e ajustes.</p>
+  ${proj.length&&minP.cashEnd<0?mia(`Pelo que já está contratado, o caixa fica negativo em ${minP.month} (${fmt(minP.cashEnd)}). Antecipe recebíveis, tome crédito antes, ou segure compras até as chegadas serem pagas.`):proj.length?mia(`Menor caixa previsto: ${fmt(minP.cashEnd)} em ${minP.month}. Compra nova só se couber nesse piso, porque saldo e tributos chegam juntos.`):''}`;}
+function renderFinancas(){const s=S;const recv=s.recv.reduce((a,r)=>a+r.amount,0);
+  $('#tab').innerHTML=`<div class="panel"><h2>Finanças</h2>
+   <div class="kpis" style="margin-top:8px"><div class="kpi"><b class="${s.cash<0?'bad':''}">${fmt(s.cash)}</b><span>Caixa</span></div><div class="kpi"><b>${fmt(recv)}</b><span>A receber</span></div><div class="kpi"><b>${fmt(PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*stk(s,p.id).avg,0))}</b><span>Estoque ao custo</span></div><div class="kpi"><b class="${s.loans.giro+s.loans.finimp?'bad':''}">${fmt(s.loans.giro+s.loans.finimp)}</b><span>Dívida</span></div><div class="kpi"><b>${fmt(patrimonio(s))}</b><span>Patrimônio</span></div></div>
+   <h3 style="margin-top:14px">Fluxo de caixa mês a mês ${tip('Cada linha mostra o que entrou e saiu do caixa no mês. Entradas: vendas à vista do marketplace (já sem comissão), recebimentos de B2B, crédito tomado e antecipação. Saídas: chegadas (saldo ao fornecedor + tributos e despesas), sinais e investimentos, custos fixos com marketing, juros e ICMS efetivo da filial. Os meses futuros são projetados só com o que já está contratado.')}</h3>${cashflowHTML(s)}
+   <h3 style="margin-top:14px">Crédito</h3>
+   <div class="row" style="margin-top:6px"><div style="flex:1;min-width:240px"><b>Capital de giro</b> ${tip(`Crédito rápido do banco, ${(giroRate(s)*100).toFixed(1)}% ao mês sobre o saldo devedor, cobrado em cada fechamento. Use como ponte entre pagar o fornecedor e receber do cliente, nunca para financiar prejuízo.`)} · ${(giroRate(s)*100).toFixed(1)}% ao mês · limite ${fmt(GIRO_MAX)}<br><span class="small muted">Saldo devedor ${fmt(s.loans.giro)}</span><div class="row" style="margin-top:6px"><input type="number" id="giroAmt" step="5000" value="20000"><button data-loan="giro" data-dir="1">Tomar</button><button data-loan="giro" data-dir="-1" ${!s.loans.giro?'disabled':''}>Pagar</button></div></div>
+   <div style="flex:1;min-width:240px"><b>FINIMP</b> ${tip('Financiamento à importação: linha bancária em moeda estrangeira para pagar o fornecedor, com juros menores que o giro. Exige histórico: liberada após 2 importações concluídas.')} · ${(FINIMP_RATE*100).toFixed(1)}% ao mês · limite ${fmt(FINIMP_MAX)}<br><span class="small muted">${s.imports>=2?'Saldo devedor '+fmt(s.loans.finimp):'Liberado após 2 importações concluídas (você tem '+s.imports+')'}</span><div class="row" style="margin-top:6px"><input type="number" id="finAmt" step="5000" value="50000" ${s.imports<2?'disabled':''}><button data-loan="finimp" data-dir="1" ${s.imports<2?'disabled':''}>Tomar</button><button data-loan="finimp" data-dir="-1" ${!s.loans.finimp?'disabled':''}>Pagar</button></div></div></div>
+   <div class="row" style="margin-top:12px"><div><b>Antecipar recebíveis (FIDC)</b> ${tip('Um fundo (FIDC) compra seus recebíveis B2B e paga à vista com 5% de deságio. Transforma venda a prazo em caixa hoje; custa mais que esperar, mas menos que o capital de giro.')}<br><span class="small muted">${recv?'Recebe '+fmt(recv*0.95)+' hoje em vez de '+fmt(recv)+' em até 60 dias.':'Nenhum recebível em aberto.'}</span></div><button id="fidc" ${!recv?'disabled':''}>Antecipar</button></div>
+   ${mia('Juros de giro a 3,2% ao mês comem qualquer margem de eletrônicos. Use crédito pra atravessar o intervalo entre pagar o fornecedor e receber do cliente, nunca pra financiar prejuízo.')}</div>
+   ${s.hist.length?`<div class="panel"><h3>Histórico mensal</h3><div class="tbl"><table><tr><th>Mês</th><th class="n">Receita</th><th class="n">Margem bruta</th><th class="n">Fixos</th><th class="n">Resultado</th><th class="n">Caixa</th></tr>${s.hist.map(h=>`<tr><td>${h.month}</td><td class="n">${fmt(h.m.rev)}</td><td class="n">${fmt(h.m.margin)}</td><td class="n">-${fmt(h.m.fixed+h.m.interest+h.m.nfe+h.m.other)}</td><td class="n ${h.m.result<0?'bad':'good'}">${fmt(h.m.result)}</td><td class="n">${fmt(h.m.cashEnd)}</td></tr>`).join('')}</table></div></div>`:''}`;
+  document.querySelectorAll('[data-loan]').forEach(b=>b.onclick=()=>{const amt=+$(b.dataset.loan==='giro'?'#giroAmt':'#finAmt').value;loan(b.dataset.loan,amt*(+b.dataset.dir));});
+  $('#fidc').onclick=antecipar;
+}
+
+/* ===================== MODAIS ===================== */
+function openModal(m){if(modalOpen){queue.unshift(m);return;}modalOpen=true;
+  const ov=document.createElement('div');ov.className='overlay';ov.id='ov';
+  ov.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><div class="mhead">${m.icon?spr(m.icon,4):''}<h2>${m.title}</h2>${m.noClose?'':'<button class="mclose" type="button" aria-label="Fechar" title="Fechar (Esc)">×</button>'}</div>${m.closeHint?`<p class="small muted" style="margin:-4px 0 8px">${m.closeHint}</p>`:''}<div class="body">${m.html}</div>${m.buttons.length?`<div class="actions">${m.buttons.map((b,i)=>`<button data-b="${i}" class="${b.cls||''}">${b.label}</button>`).join('')}</div>`:''}</div>`;
+  document.body.appendChild(ov);
+  ov.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const bt=m.buttons[+b.dataset.b];closeModal();if(bt.onClick)bt.onClick();showNext();});
+  const dismiss=()=>{closeModal();if(m.onClose)m.onClose();showNext();};const xc=ov.querySelector('.mclose');if(xc)xc.onclick=dismiss;
+  if(!m.noClose){ov._esc=e=>{if(e.key==='Escape'){document.removeEventListener('keydown',ov._esc);dismiss();}};document.addEventListener('keydown',ov._esc);}
+  if(m.onOpen)m.onOpen();
+}
+function closeModal(){const ov=$('#ov');if(ov){if(ov._esc)document.removeEventListener('keydown',ov._esc);ov.remove();}modalOpen=false;}
+function showNext(){if(modalOpen||!queue.length)return;openModal(queue.shift());}
+
+/* ===================== TELA INICIAL ===================== */
+let startMode='semanal', startAvatar=0, startSeg='pet';
+function showStart(){
+  let nick='';try{nick=localStorage.getItem('oimp.nick')||'';startAvatar=+(localStorage.getItem('oimp.avatar')||0)||0;startSeg=localStorage.getItem('oimp.seg')||startSeg;if(!SEGMENTS[startSeg])startSeg='pet';}catch(e){}
+  $('#app').innerHTML=`<header class="topbar"><div class="in"><div class="brand">${mainoLogo(30)}<h1>ImportTycoon</h1><small>um jogo da Mainô</small></div></div></header>
+  <div class="wrap"><div class="start">
+   <div class="hero"><h1>Construa seu império de importação.</h1><p>Você começa com R$ 150 mil, uma sala e um Radar limitado. Em 12 meses, suba de Garagem a Grupo Importador ou quebre tentando. Fornecedor, modal, câmbio, NCM, canal de parametrização, tributos, galpão, canal de venda: tudo é decisão sua.</p><div class="hero-strip">${spr('ship',3)}${spr('container',3)}${spr('plane',3)}${spr('truck',3)}${spr('fone',3)}${spr('smartwatch',3)}${spr('caixa',3)}${spr('carregador',3)}</div></div>
+   <div><h3 style="margin-bottom:8px">Em que segmento você vai importar?</h3><div class="modes" style="grid-template-columns:repeat(3,1fr)">${Object.values(SEGMENTS).map(g=>`<button class="mode ${startSeg===g.id?'on':''}" data-seg="${g.id}" aria-pressed="${startSeg===g.id}"><div class="row" style="justify-content:space-between"><h3>${spr(g.icon,2)} ${g.name}</h3><span class="pill ${g.level==='Fácil'?'verde':g.level==='Médio'?'amarelo':'vermelho'}">${g.level}</span></div><p class="small muted" style="margin-top:6px">${g.desc}</p></button>`).join('')}</div></div>
+   <div><h3 style="margin-bottom:8px">Quem vai comandar a importadora?</h3><div class="avatars">${AVATARS.map((a,i)=>`<button class="mode av ${startAvatar===i?'on':''}" data-av="${i}" aria-pressed="${startAvatar===i}">${avatarImg(a,4)}<span>${a.name}</span></button>`).join('')}</div></div>
+   <div class="row"><label class="field" style="flex:1;min-width:260px">Nome da empresa (vai no card)<input id="nick" maxlength="40" value="${esc(nick)}" placeholder="ex.: Importadora Horizonte" style="width:100%;font-size:1.1rem;padding:11px 14px"></label><button class="primary big" id="go">Abrir a empresa</button></div>
+   ${FOOTER}
+  </div></div>`;
+  document.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{startSeg=b.dataset.seg;try{localStorage.setItem('oimp.seg',startSeg);}catch(e){}showStart();});
+  document.querySelectorAll('[data-av]').forEach(b=>b.onclick=()=>{startAvatar=+b.dataset.av;try{localStorage.setItem('oimp.avatar',startAvatar);}catch(e){}showStart();});
+  $('#go').onclick=()=>{const n=$('#nick').value.trim()||'Minha Importadora';try{localStorage.setItem('oimp.nick',n);}catch(e){}newGame(startMode,n,startAvatar,startSeg);};
+}
+
+/* ===================== BOOT ===================== */
+window.claude?.hot?.snapshot?.(()=>({S,ui,queue}));
+function boot(d){if(d&&d.S){S=d.S;applySegment(S.seg||'eletronicos');ui=d.ui||ui;queue=d.queue||[];renderGame();showNext();}else showStart();}
+setAppIcon();
+window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
+</script>
+</body>
+</html>
