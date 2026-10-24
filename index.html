@@ -1295,8 +1295,9 @@ function confirmClose(){const s=S;
 /* ===================== RENDER ===================== */
 // Virada do mês: os indicadores do cabeçalho contam do valor antigo ao novo (~1,4 s) e piscam verde/vermelho, para o jogador sentir o que mudou.
 let statPrev=null;
-function statSnapshot(s){const lim=RADAR[s.radar.level].limit;return {cash:s.cash,dollar:s.dollar,pat:patrimonio(s),radar:lim===Infinity?NaN:s.radar.used/lim*100};}
-const STAT_FMT={cash:fmt,pat:fmt,dollar:fmtR,radar:v=>Math.round(v)+'%'};
+const revTot=s=>s.hist.reduce((a,h)=>a+h.m.rev,0); // faturamento acumulado dos meses fechados
+function statSnapshot(s){const lim=RADAR[s.radar.level].limit;return {rev:revTot(s),cash:s.cash,dollar:s.dollar,pat:patrimonio(s),radar:lim===Infinity?NaN:s.radar.used/lim*100};}
+const STAT_FMT={rev:fmt,cash:fmt,pat:fmt,dollar:fmtR,radar:v=>Math.round(v)+'%'};
 function animateStats(prev){if(typeof requestAnimationFrame!=='function'||typeof matchMedia!=='function'||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   const els=Array.from(document.querySelectorAll('.stat b[data-k]')||[]);const D=1400;
   const items=els.map(el=>{const k=el.dataset.k,to=parseFloat(el.dataset.v),from=prev[k];if(!isFinite(to)||!isFinite(from)||Math.abs(to-from)<0.005)return null;el.parentElement.classList.add(to>from?'up':'down');return {el,k,from,to,pre:el.dataset.pre||'',suf:el.dataset.suf?' '+el.dataset.suf:''};}).filter(Boolean);
@@ -1311,6 +1312,7 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
     <div class="brand">${mainoLogo(30)}<h1>ImportTycoon</h1><small>${avatarImg(myAvatar(),2)}${esc(s.nick)} · ${SEG.name} · ${s.mode==='semanal'?'Desafio '+s.seedStr.split(':')[1]:'Desafio'}</small></div>
     <div class="stats">
       <div class="stat"><b>${monthName(s.turn)}</b><span>Rodada ${s.turn} de 12</span></div>
+      <div class="stat"><b data-k="rev" data-v="${revTot(s)}">${fmt(revTot(s))}</b><span>Faturamento</span></div>
       <div class="stat ${s.cash<0?'neg':''}"><b data-k="cash" data-v="${s.cash}">${fmt(s.cash)}</b><span>Caixa</span></div>
       <div class="stat"><b data-k="dollar" data-v="${s.dollar}" data-suf="${s.dHist.length>1?(s.dollar>s.dHist[s.dHist.length-2]?'▲':'▼'):''}">${fmtR(s.dollar)} ${s.dHist.length>1?(s.dollar>s.dHist[s.dHist.length-2]?'▲':'▼'):''}</b><span>Dólar</span></div>
       <div class="stat"><b data-k="radar" data-v="${lim===Infinity?'':Math.round(used/lim*100)}" data-pre="${RADAR[s.radar.level].name} ">${RADAR[s.radar.level].name} ${lim===Infinity?'':Math.round(used/lim*100)+'%'}</b><span>Radar</span></div>
