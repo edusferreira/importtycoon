@@ -530,30 +530,30 @@ function queueArrivals(report){
   }
 }
 const fx=v=>(v>=0.995&&v<=1.005)?'1,00':v.toFixed(2).replace('.',',');
-function explainMonth(r){const s=S;if(!r||!r.sales||!r.sales.length)return '<p class="small muted">Nenhum produto ativo neste mês: nada foi vendido nem procurado.</p>';
-  const blocks=r.sales.map(x=>{const f=x.f||{};const dem=x.dem||{mp:0,b2b:0};const demTot=dem.mp+dem.b2b;const sold=x.qMp+x.qB;const diag=[];
-    const pr=f.market?x.price/f.market:1;
-    if(pr>1.05)diag.push(`Preço <b>${Math.round((pr-1)*100)}% acima</b> do mercado: demanda ×${fx(f.price)}.`);else if(pr<0.95)diag.push(`Preço <b>${Math.round((1-pr)*100)}% abaixo</b> do mercado: demanda ×${fx(f.price)}, mas margem menor.`);
-    if(f.mkt>1.005)diag.push(`Marketing: demanda ×${fx(f.mkt)}.`);
-    if(f.brand<0.995)diag.push(`Confiança da marca em ${Math.round(f.brand*100)}%: demanda ×${fx(f.brand)}.`);
-    if(f.event&&f.event!==1)diag.push(`Evento do mês: demanda ×${fx(f.event)}.`);
-    if(f.season&&Math.abs(f.season-1)>0.04)diag.push(`Sazonalidade: ×${fx(f.season)}.`);
-    if(f.rep>1.005)diag.push(`Reputação (nível Trading): ×${fx(f.rep)}.`);
-    if(x.channel!=='b2b'&&f.mpOk===false)diag.push('<span class="warn">Marketplace bloqueado: sem sistema de gestão não há NF-e.</span>');
-    if(x.channel!=='marketplace'&&f.b2bPrice<0.6)diag.push(`B2B comprou pouco (×${fx(f.b2bPrice)}): atacado só compra bem até 85% do preço de mercado.`);
-    if(x.stockStart===0)diag.push(`<span class="bad">Sem estoque: ${demTot} clientes procuraram e não encontraram.</span>`);
-    else if(x.unmet>0)diag.push(`<span class="bad">Estoque acabou: ${x.unmet} clientes (${Math.round(x.unmet/Math.max(1,demTot)*100)}% da demanda) saíram sem comprar.</span>`);
-    else if(x.left>0&&demTot>0)diag.push(`Sobraram ${x.left} unidades: demanda abaixo do estoque${pr>1.05?' (preço alto)':''}.`);
-    return `<div class="explain"><div class="row" style="justify-content:space-between;align-items:baseline"><b>${spr(x.pid||'box',2)} ${x.name}</b><span class="small muted">${fmt(x.price)} · ${x.channel==='ambos'?'marketplace + B2B':x.channel}</span></div>
-      <div class="small" style="margin-top:4px">Demanda <b>${demTot}</b> = base ${f.base||'?'} × sazonalidade ${fx(f.season||1)} × preço ${fx(f.price||1)} × marketing ${fx(f.mkt||1)} × confiança ${fx(f.brand||1)}${f.event&&f.event!==1?' × evento '+fx(f.event):''}${f.rep>1.005?' × reputação '+fx(f.rep):''} × acaso ${fx(f.noise||1)} → marketplace ${dem.mp} · B2B ${dem.b2b}</div>
-      <div class="small" style="margin-top:2px">Estoque <b>${x.stockStart}</b> → vendeu <b>${sold}</b> (${x.qMp} marketplace à vista, ${x.qB} B2B em 60 dias) → ${x.unmet>0?`<b class="bad">${x.unmet} sem atendimento</b>`:`sobraram <b>${x.left}</b>`}</div>
-      ${diag.length?`<ul class="small" style="margin:6px 0 0 18px;padding:0">${diag.map(t=>`<li>${t}</li>`).join('')}</ul>`:''}</div>`;}).join('');
+function explainMonth(r){if(!r||!r.sales||!r.sales.length)return '<p class="small muted">Nenhum produto ativo neste mês: nada foi vendido nem procurado.</p>';
+  // Só o resultado por produto, em palavras: quantos procuraram, quantos compraram e o que sobrou ou faltou. Sem fórmula.
+  const rows=r.sales.map(x=>{const f=x.f||{};const dem=x.dem||{mp:0,b2b:0};const demTot=dem.mp+dem.b2b;const sold=x.qMp+x.qB;const pr=f.market?x.price/f.market:1;
+    let res,cls='';
+    if(x.stockStart===0){res=`sem estoque: ${demTot} clientes não encontraram`;cls='bad';}
+    else if(x.unmet>0){res=`estoque acabou: ${x.unmet} ficaram sem`;cls='bad';}
+    else if(x.left>0&&demTot>0){res=`sobraram ${x.left} no estoque`;cls='muted';}
+    else if(x.left>0){res=`ninguém procurou; sobraram ${x.left}`;cls='muted';}
+    else{res='vendeu tudo';cls='good';}
+    let why='';
+    if(x.channel!=='b2b'&&f.mpOk===false)why='marketplace bloqueado sem sistema';
+    else if(pr>1.05)why=`preço ${Math.round((pr-1)*100)}% acima do mercado`;
+    else if(f.brand<0.9)why=`confiança da marca em ${Math.round(f.brand*100)}%`;
+    else if(f.event&&f.event<0.9)why='evento do mês derrubou a procura';
+    else if(f.event&&f.event>1.1)why='evento do mês puxou a procura';
+    else if(f.mkt>1.1)why='marketing puxou a procura';
+    else if(pr<0.95)why=`preço ${Math.round((1-pr)*100)}% abaixo do mercado`;
+    return `<tr><td>${spr(x.pid||'box',2)} ${x.name}</td><td class="n">${demTot}</td><td class="n">${sold}</td><td class="${cls}">${res}${why?` <span class="muted">· ${why}</span>`:''}</td></tr>`;}).join('');
   const dol=r.dollarPrev?`<p class="small muted" style="margin-top:6px">Dólar: ${fmtR(r.dollarPrev)} → ${fmtR(r.dollarNext)} (${r.dollarNext>=r.dollarPrev?'+':''}${((r.dollarNext/r.dollarPrev-1)*100).toFixed(1).replace('.',',')}%).</p>`:'';
-  return `<p class="small muted">Demanda = base × sazonalidade × preço × marketing × confiança × eventos. O que você controla: preço, marketing, estoque.</p>${blocks}${dol}`;}
+  return `<div class="tbl"><table><tr><th>Produto</th><th class="n">Procuraram</th><th class="n">Compraram</th><th>Resultado</th></tr>${rows}</table></div>${dol}`;}
 function queueReport(r){const m=r.m;const cls=v=>v<0?'bad':'good';
   queue.push({icon:'coin',title:`Fechamento de ${r.month} (mês ${r.turn})`,html:`
    <div class="kpis"><div class="kpi"><b>${fmt(m.rev)}</b><span>Receita</span></div><div class="kpi"><b class="${cls(m.result)}">${fmt(m.result)}</b><span>Resultado</span></div><div class="kpi"><b class="${cls(m.cashEnd)}">${fmt(m.cashEnd)}</b><span>Caixa final</span></div></div>
-   <h3 style="margin-top:10px">O que aconteceu com a demanda</h3>${explainMonth(r)}
+   <h3 style="margin-top:10px">Procura e vendas</h3>${explainMonth(r)}
    <h3 style="margin-top:10px">Resultado do mês</h3><div class="tbl"><table>
    ${r.sales.map(x=>`<tr><td>Vendas ${x.name}</td><td class="n">${x.qMp} mkt + ${x.qB} B2B a ${fmt(x.price)}</td></tr>`).join('')}
    <tr><td>Receita bruta</td><td class="n">${fmt(m.rev)}</td></tr><tr><td>Custo da mercadoria vendida</td><td class="n">-${fmt(m.cmv)}</td></tr><tr><td>Comissão do marketplace</td><td class="n">-${fmt(m.fees)}</td></tr>${m.icmsTTD?`<tr><td>ICMS efetivo na saída (TTD 409, 2,6%)</td><td class="n">-${fmt(m.icmsTTD)}</td></tr>`:''}
