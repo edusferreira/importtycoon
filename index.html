@@ -63,6 +63,17 @@ input[type=number]{width:7.5em}
 .stat b{font-family:var(--display);font-size:1.25rem;font-weight:700;line-height:1}
 .stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75}
 .stat.neg b{color:#FF8A8A}
+/* Linha do tempo: 12 rodadas (meses). Verde = rodado, branco pulsando = mês atual, apagado = ainda vem. */
+.timeline{display:flex;align-items:flex-end;gap:3px;padding:0 max(16px,env(safe-area-inset-right,0px)) 9px max(16px,env(safe-area-inset-left,0px));max-width:1180px;margin:0 auto}
+.tl-cap{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;opacity:.85;white-space:nowrap;margin-right:10px;padding-bottom:1px}
+.timeline .m{flex:1;min-width:0;text-align:center;font-size:.62rem;letter-spacing:.03em;text-transform:uppercase;opacity:.45;line-height:1}
+.timeline .m i{display:block;height:6px;border-radius:3px;background:rgba(255,255,255,.18);margin-bottom:4px}
+.timeline .m.done{opacity:.95}.timeline .m.done i{background:#00B386}
+.timeline .m.now{opacity:1;font-weight:700}.timeline .m.now i{background:#fff;box-shadow:0 0 0 2px #00B386}
+@keyframes tlFill{from{transform:scaleX(0)}}
+@keyframes tlPulse{0%,100%{box-shadow:0 0 0 2px #00B386}50%{box-shadow:0 0 0 4px rgba(0,179,134,.35)}}
+@media (prefers-reduced-motion:no-preference){.timeline .m.done.just i{animation:tlFill .5s ease-out;transform-origin:left}.timeline .m.now i{animation:tlPulse 1.6s ease-in-out infinite}}
+@media (max-width:520px){.tl-cap{display:none}.timeline .m{font-size:.55rem}}
 .stat b{display:inline-block;transform-origin:left center}
 @keyframes statUp{0%{color:#1ED3A5;transform:scale(1.1)}70%{color:#1ED3A5}100%{transform:none}}
 @keyframes statDown{0%{color:#FF8A8A;transform:scale(1.1)}70%{color:#FF8A8A}100%{transform:none}}
@@ -364,7 +375,7 @@ function newGame(mode,nick,avatar,seg){
   log(S,`Empresa aberta. ${fmt(START_CASH)} em caixa, Radar ${RADAR[0].name}.`);
   ui.room='mercado';walk=null;
   renderGame();
-  openModal({icon:'ship',title:'Bem-vindo à sua importadora',html:`<p>Você tem <b>${fmt(START_CASH)}</b>, um escritório alugado e um Radar na modalidade <b>Expressa</b> (até US$ 50 mil CIF por semestre). Em 12 meses, construa patrimônio ou quebre tentando.</p>
+  openModal({icon:'ship',title:'Bem-vindo à sua importadora',html:`<p>Você tem <b>${fmt(START_CASH)}</b>, um escritório alugado e um Radar na modalidade <b>Expressa</b> (até US$ 50 mil CIF por semestre). Em 12 meses, construa patrimônio ou quebre tentando.</p><p>Cada mês é uma rodada: você toma as decisões nas salas e aperta <b>Rodar o mês</b>. A barra no topo mostra onde você está nas 12 rodadas.</p>
    <p>Segmento <b>${SEG.name}</b> (${SEG.level}): ${SEG.desc}</p><p>Cada mês: leia o <b>Mercado</b>, <b>Compre</b> de um fornecedor, defina <b>Vendas</b>, <b>Invista</b> e feche o mês.</p><p>Você ainda <b>não tem sistema de gestão</b>: sem NF-e, o marketplace fica bloqueado e a fiscalização pode parar a operação. Passe na <b>Diretoria</b>.</p>
    ${mia(PRODUCTS.some(p=>p.anu)?'Antes de comprar, veja quais produtos exigem anuência e solicite já no primeiro mês: o órgão leva de 1 a 2 meses e o embarque só pode sair depois. Enquanto isso, nunca gaste tudo: saldo e tributos só vêm na chegada.':'Comece pequeno. Um pedido LCL chega em 2 meses. Nunca gaste tudo no primeiro mês: o saldo do pedido e os tributos só vêm na chegada.')}
    <p class="small muted">Desafio da semana ${seedStr.split(':')[1]}: todo mundo que jogar ${SEG.name} nesta semana enfrenta o mesmo dólar, a mesma demanda e os mesmos eventos. Seu placar é o print que você compartilha no fim.</p>`,
@@ -702,7 +713,7 @@ function revisarMes(dropped,removed){const s=S;const cmds=s.cmds||[];const set=c
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
   const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
-  openModal({icon:'coin',title:`Revisar e fechar ${monthName(s.turn)}`,html:`
+  openModal({icon:'coin',title:`Revisar e rodar ${monthName(s.turn)}`,html:`
    ${removed?`<p class="good small">Desfeito: ${removed.desc}.${dropped&&dropped.length?` <span class="warn">Caíram junto por depender dela: ${dropped.map(d=>d.desc).join('; ')}.</span>`:''}</p>`:''}
    <h3>Decisões deste mês</h3>
    ${cmds.length?`<div class="tbl"><table>${cmds.map((c,i)=>`<tr><td>${c.desc}</td><td class="n">${c.custo?fmt(c.custo):''}</td><td class="n"><button class="small" data-undo="${i}">Desfazer</button></td></tr>`).join('')}</table></div>`:'<p class="small muted">Nenhuma decisão registrada neste mês: só ajustes de preço, canal e marketing.</p>'}
@@ -712,7 +723,7 @@ function revisarMes(dropped,removed){const s=S;const cmds=s.cmds||[];const set=c
    <h3 style="margin-top:10px">O que vai acontecer no fechamento</h3>
    <p class="small"><b>Vendas previstas:</b> ${vendas.length?vendas.join(', '):'nenhuma (sem estoque)'}.<br><b>Chegadas:</b> ${chegadas.length?chegadas.join(', ')+'. Saldo ao fornecedor e tributos serão pagos agora.':'nenhuma'}.<br><b>Custos fixos:</b> ${fmt(fixos)}${s.loans.giro+s.loans.finimp?` · <b>juros:</b> ${fmt(Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE))}`:''}.</p>
    ${sem?mia('Você não tem estoque nem pedidos a caminho. O mês vai passar só com custo fixo.'):s.cash<0?mia('Seu caixa já está negativo além do limite de crédito. Se fechar negativo de novo, o banco encerra a conta.'):''}`,
-   buttons:[{label:'Voltar e ajustar'},{label:`Fechar ${monthName(s.turn)}`,cls:'primary',onClick:closeMonth}],
+   buttons:[{label:'Voltar e ajustar'},{label:`Rodar ${monthName(s.turn)} ▸`,cls:'primary',onClick:closeMonth}],
    onOpen:()=>{document.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>{closeModal();undoCmd(+b.dataset.undo);});document.querySelectorAll('#ov [data-room]').forEach(b=>b.onclick=()=>{closeModal();goRoom(b.dataset.room);});}});
 }
 
@@ -1259,7 +1270,7 @@ function confirmClose(){const s=S;
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
   const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
-  confirmar({icon:'coin',title:`Fechar o mês de ${monthName(s.turn)}?`,yes:'Fechar o mês',onYes:closeMonth,html:`
+  confirmar({icon:'coin',title:`Rodar o mês de ${monthName(s.turn)}?`,yes:'Rodar o mês',onYes:closeMonth,html:`
    <p><b>Vendas previstas:</b> ${vendas.length?vendas.join(', '):'nenhuma (sem estoque)'}.</p>
    <p><b>Chegadas neste fechamento:</b> ${chegadas.length?chegadas.join(', ')+'. Saldo ao fornecedor e tributos serão pagos agora.':'nenhuma'}.</p>
    ${s.mkt?`<p><b>Marketing:</b> ${fmt(s.mkt)} (demanda +${Math.round(mktLift(s.mkt)*100)}%).</p>`:''}<p><b>Custos fixos:</b> ${fmt(fixos)}${s.loans.giro+s.loans.finimp?` · <b>juros:</b> ${fmt(Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE))}`:''}.</p>
@@ -1284,18 +1295,19 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
   <header class="topbar"><div class="in">
     <div class="brand">${mainoLogo(30)}<h1>ImportTycoon</h1><small>${avatarImg(myAvatar(),2)}${esc(s.nick)} · ${SEG.name} · ${s.mode==='semanal'?'Desafio '+s.seedStr.split(':')[1]:'Desafio'}</small></div>
     <div class="stats">
-      <div class="stat"><b>${monthName(s.turn)} · ${s.turn}/12</b><span>Mês</span></div>
+      <div class="stat"><b>${monthName(s.turn)}</b><span>Rodada ${s.turn} de 12</span></div>
       <div class="stat ${s.cash<0?'neg':''}"><b data-k="cash" data-v="${s.cash}">${fmt(s.cash)}</b><span>Caixa</span></div>
       <div class="stat"><b data-k="dollar" data-v="${s.dollar}" data-suf="${s.dHist.length>1?(s.dollar>s.dHist[s.dHist.length-2]?'▲':'▼'):''}">${fmtR(s.dollar)} ${s.dHist.length>1?(s.dollar>s.dHist[s.dHist.length-2]?'▲':'▼'):''}</b><span>Dólar</span></div>
       <div class="stat"><b data-k="radar" data-v="${lim===Infinity?'':Math.round(used/lim*100)}" data-pre="${RADAR[s.radar.level].name} ">${RADAR[s.radar.level].name} ${lim===Infinity?'':Math.round(used/lim*100)+'%'}</b><span>Radar</span></div>
       <div class="stat"><b data-k="pat" data-v="${patrimonio(s)}">${fmt(patrimonio(s))}</b><span>Patrimônio</span></div>
       <div class="stat"><b>Nv ${level(s).n} · ${level(s).name}</b><span>Empresa${nextLevel(s)?' · '+Math.round(xp(s)/nextLevel(s).xp*100)+'% do próximo':''}</span></div>
-    </div></div></header>
+    </div></div>
+    <div class="timeline" aria-label="Linha do tempo: 12 rodadas, uma por mês"><span class="tl-cap">${s.over?'Fim de jogo':'Rodada '+s.turn+' de 12'}</span>${MONTHS.map((mo,i)=>{const t=i+1;const st=s.over||t<s.turn?'done':t===s.turn?'now':'';const just=statPrev&&(t===s.turn-1||t===s.turn)?' just':'';return `<span class="m ${st}${just}" title="${mo}: ${st==='done'?'rodado':st==='now'?'mês atual, tome as decisões e rode o mês':'ainda vem'}"><i></i>${mo}</span>`;}).join('')}</div></header>
   <div class="wrap"><div class="grid"><section>
     <div class="base" style="flex-direction:column;align-items:stretch;gap:6px"><canvas id="base" width="720" height="180"></canvas><div class="cap">${s.ships.length} embarque(s) em trânsito · ${SYSTEMS[sysLv(s)].short}${s.up.buyer?' · comprador internacional':''}</div></div>
     <div class="panel office-wrap"><canvas id="office" width="720" height="216" aria-label="Planta do escritório: clique numa sala"></canvas><nav class="rooms" aria-label="Salas">${ROOMS.map(r=>`<button data-room="${r.id}" aria-current="${(walk?walk.target:ui.room)===r.id}">${r.name}</button>`).join('')}</nav></div>
     <div id="tab"></div>
-    <div class="actions"><button class="primary big" id="close" ${s.over?'disabled':''}>Revisar e fechar ${monthName(s.turn)} ▸</button></div>
+    <div class="actions"><button class="primary big" id="close" ${s.over?'disabled':''}>Rodar o mês de ${monthName(s.turn)} ▸</button></div>
   </section>
   <aside><div class="mia"><div class="who"><div class="av">${spr('mia',3)}</div><div><b>Mia</b><br><span class="small muted">mentora de importação</span></div></div><div class="tip">${miaTip(s)}</div>
     <div class="log"><div class="t" style="border:0">Diário da empresa</div>${s.log.slice(0,12).map(l=>`<div><span class="t">${monthName(l.turn)}</span> ${l.t}</div>`).join('')}</div></div></aside>
