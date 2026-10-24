@@ -1378,8 +1378,8 @@ function renderVendas(){const s=S;
    ${mia('Marketing cria demanda; só o estoque entrega. Se você anuncia e não tem produto, perde a venda e a confiança: a demanda cai e demora meses pra voltar. Regule o orçamento pelo que vai ter em estoque, não pelo que gostaria de vender.')}</div>
    ${s.recv.length?`<div class="panel"><h3>A receber (B2B)</h3><div class="tbl"><table>${s.recv.map(r=>`<tr><td>${r.p}</td><td class="n">${fmt(r.amount)}</td><td>vence em ${monthName(r.due)}</td></tr>`).join('')}</table></div></div>`:''}`;
   const mk=$('#mkt');if(mk){mk.oninput=()=>{s.mkt=+mk.value;};mk.onchange=()=>{s.mkt=+mk.value;log(s,`Marketing ajustado para ${fmt(s.mkt)}/mês.`);renderGame();};}
-  document.querySelectorAll('[data-price]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.price).price=Math.max(1,+e.target.value||1);renderGame();});
-  document.querySelectorAll('[data-ch]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.ch).channel=e.target.value;renderGame();});
+  document.querySelectorAll('[data-price]').forEach(e=>e.onchange=()=>{const p=P(e.dataset.price);const v=Math.max(1,Math.round(+e.value)||1);stk(s,e.dataset.price).price=v;log(s,`Preço de ${p.name} ajustado para ${fmt(v)}.`);renderGame();});
+  document.querySelectorAll('[data-ch]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.ch).channel=e.value;renderGame();});
 }
 function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];
   $('#tab').innerHTML=`<div class="panel"><h2>Investir e expandir</h2>
