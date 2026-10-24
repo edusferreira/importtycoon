@@ -152,6 +152,10 @@ tr.prev td{color:var(--muted);font-style:italic}
 .selo{background:var(--navy);color:var(--navy-fg);border-radius:8px;padding:4px 10px;font-family:var(--display);font-weight:700;font-size:.95rem}
 .cascade td:first-child{color:var(--muted)}
 .cascade tr.total td{font-weight:700;border-top:2px solid var(--fg);color:var(--fg)}
+.cascade tr.total:first-child td{border-top:0}
+details.casc{margin-top:8px} details.casc summary{cursor:pointer;color:var(--brand-ink);font-weight:600;font-size:.9rem;list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
+details.casc summary::-webkit-details-marker{display:none} details.casc summary::before{content:'▸';display:inline-block;transition:transform .15s} details.casc[open] summary::before{transform:rotate(90deg)}
+details.casc .tbl{margin-top:6px}
 .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--brand)}
 .bar.hot i{background:var(--warn)}
@@ -410,10 +414,11 @@ function cascade(s,sh,rate,canal){
   return {rows:rows.filter(r=>r[1]>0||r[2]).map(r=>r[2]===undefined?[r[0],r[1]]:r),total,va,taxes:ii+ipi+pc+icms+afrmm+siscomex,fobBRL};
 }
 function cascadeHTML(c,qty){
-  return `<div class="tbl"><table class="cascade">${c.rows.map(r=>`<tr${r[2]?' style="font-weight:600"':''}><td>${r[0]}</td><td class="n">${fmt(r[1])}</td></tr>`).join('')}
-  <tr class="total"><td>Custo nacionalizado</td><td class="n">${fmt(c.total)}</td></tr>
+  // Só total e unitário à vista; o detalhamento (frete, tributos, despesas) fica atrás de uma seta mostra/esconde.
+  return `<div class="tbl"><table class="cascade"><tr class="total"><td>Custo nacionalizado</td><td class="n">${fmt(c.total)}</td></tr>
   <tr class="total"><td>Por unidade (${qty} un.)</td><td class="n">${fmtR(c.total/qty)}</td></tr></table></div>
-  <p class="small muted">Comprou por ${fmt(c.fobBRL)}. Custou ${fmt(c.total)} pra ter em estoque: <b>${Math.round((c.total/c.fobBRL-1)*100)}% acima do FOB</b>.</p>`;
+  <p class="small muted">Comprou por ${fmt(c.fobBRL)}. Custou ${fmt(c.total)} pra ter em estoque: <b>${Math.round((c.total/c.fobBRL-1)*100)}% acima do FOB</b>.</p>
+  <details class="casc" id="casc" ${ui.cascOpen?'open':''}><summary>Detalhamento dos custos</summary><div class="tbl"><table class="cascade">${c.rows.map(r=>`<tr${r[2]?' style="font-weight:600"':''}><td>${r[0]}</td><td class="n">${fmt(r[1])}</td></tr>`).join('')}</table></div></details>`;
 }
 
 /* ===================== FECHAMENTO DO MÊS ===================== */
@@ -1372,7 +1377,7 @@ function renderComprar(){const s=S,b=ui.buy;if(!P(b.pid))b.pid=PRODUCTS[0].id;co
    ${s.ships.length?`<div class="panel"><h3>Em trânsito</h3><div class="tbl"><table><tr><th>Produto</th><th class="n">Un.</th><th>Modal</th><th>Fornecedor</th><th class="n">FOB</th><th>Câmbio</th><th>Chega</th></tr>${s.ships.map(x=>`<tr><td>${P(x.pid).name}</td><td class="n">${x.qty}</td><td>${MODAIS[x.modal].name.split(' (')[0]}</td><td>${SUP(x.sid).flag} ${SUP(x.sid).name.split(' ')[0]}</td><td class="n">${fmtU(x.fobUSD)}</td><td>${x.lockRate?'travado '+fmtR(x.lockRate):'do dia'}</td><td>${monthName(x.eta)}${x.held?' <span class="pill vermelho">retida</span>':''}${x.late?' <span class="pill amarelo">atrasou</span>':''}</td></tr>`).join('')}</table></div></div>`:''}`;
   document.querySelectorAll('[data-pid]').forEach(e=>e.onclick=()=>{b.pid=e.dataset.pid;renderGame();});
   document.querySelectorAll('[data-sid]').forEach(e=>e.onclick=()=>{b.sid=e.dataset.sid;if(b.qty<moqOf(s,SUP(b.sid)))b.qty=moqOf(s,SUP(b.sid));renderGame();});
-  $('#qty').onchange=e=>{b.qty=+e.target.value;renderGame();};
+  $('#qty').onchange=e=>{b.qty=+e.target.value;renderGame();};const dt=$('#casc');if(dt)dt.ontoggle=()=>{ui.cascOpen=dt.open;};
   const sg=$('#sugerir');if(sg)sg.onclick=()=>{const eta=s.turn+MODAIS[b.modal].lead;let need=0;for(let m=s.turn;m<=Math.min(12,eta+1);m++){const save=s.turn;s.turn=m;const d=demandFor(s,b.pid,stk(s,b.pid).price,'ambos',1);s.turn=save;need+=Math.round(d.mp+d.b2b);}const pipe=stk(s,b.pid).qty+s.ships.filter(x=>x.pid===b.pid).reduce((a,x)=>a+x.qty,0);b.qty=Math.max(SUP(b.sid).moq,Math.round((need-pipe)/50)*50);renderGame();};$('#modal').onchange=e=>{b.modal=e.target.value;renderGame();};
   $('#lock').onchange=e=>{b.lock=e.target.value==='1';renderGame();};const ins=$('#insp');if(ins)ins.onchange=e=>{b.insp=e.target.value==='1';renderGame();};$('#seguro').onchange=e=>{b.seguro=e.target.value==='1';renderGame();};
   const bb=$('#buy');if(bb)bb.onclick=startBuy;const lb=$('#lic');if(lb)lb.onclick=()=>solicitarLicenca(b.pid);
