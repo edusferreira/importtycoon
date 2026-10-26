@@ -317,7 +317,7 @@ const SYSTEMS=[
  {lv:0,name:'Sem sistema',fee:0,short:'sem sistema',desc:'Sem emissão de NF-e: só metade dos clientes B2B compra, marketplace bloqueado e 20% de chance por mês de a fiscalização multar e parar a operação.'},
  {lv:1,name:'Sistema generalista',fee:600,short:'ERP generalista',desc:'Emite NF-e e libera o marketplace. Mas não entende de importação: 35% de chance de erro na NF-e de importação a cada chegada e, se a fiscalização vier, multa.'},
  {lv:2,name:'Mainô ERP · Plano Operação',fee:990,short:'Mainô Operação',desc:'NF-e de importação a partir da DUIMP sem erro. Fiscalização nunca multa: você está sempre preparado. Metade do risco de canal vermelho, sugestão de NCM, aviso antecipado de mudança de norma. Câmbio fechado pelo sistema com spread de 0,5% (no banco: 1%). Economiza R$ 800/mês de retrabalho e R$ 500 por processo no despachante.'},
- {lv:3,name:'Mainô ERP · Plano Gestão',fee:1690,short:'Mainô Gestão',desc:'Ganho operacional: documentação pronta antes da chegada corta pela metade a armazenagem extra de canal amarelo e vermelho, elimina demurrage e o efeito de porto congestionado. Contabilidade integrada economiza mais R$ 800/mês. Margem por produto na compra e nas vendas: custo nacionalizado contra preço de venda, para planejar as compras. Previsão de demanda exata por 3 meses.'},
+ {lv:3,name:'Mainô ERP · Plano Gestão',fee:1690,short:'Mainô Gestão',desc:'Ganho operacional: documentação pronta antes da chegada corta pela metade a armazenagem extra de canal amarelo e vermelho, elimina demurrage e o efeito de porto congestionado. Contabilidade integrada economiza mais R$ 800/mês. Margem por produto no Comex e nas vendas: custo nacionalizado contra preço de venda, para planejar as compras. Previsão de demanda exata por 3 meses.'},
  {lv:4,name:'Mainô ERP · Plano Comando',fee:2900,short:'Mainô Comando',desc:'Decisões melhores: sugestão de quantidade de pedido com base em estoque, trânsito e demanda; análise de crédito de clientes zera a inadimplência B2B; canal amarelo cai pela metade também.'},
 ];
 const sysLv=s=>s.sys!=null?s.sys:(s.up&&s.up.maino?2:0);
@@ -413,7 +413,7 @@ function newGame(mode,nick,avatar,seg){
   ui.room='comprar';walk=null;
   renderGame();
   openModal({icon:'ship',title:'Bem-vindo à sua importadora',html:`<p>Você tem <b>${fmt(START_CASH)}</b>, um escritório alugado e um Radar na modalidade <b>Expressa</b> (até US$ 50 mil CIF por semestre). Em 12 meses, construa patrimônio ou quebre tentando.</p><p>Cada mês é uma rodada: você toma as decisões nas salas e aperta <b>Rodar o mês</b>. A barra no topo mostra onde você está nas 12 rodadas.</p>
-   <p>Segmento <b>${SEG.name}</b> (${SEG.level}): ${SEG.desc}</p><p>Cada mês: <b>Compre</b> de um fornecedor (preço de venda e demanda de cada produto estão lá), defina <b>Vendas</b>, <b>Invista</b> na Diretoria e rode o mês.</p><p>Você ainda <b>não tem sistema de gestão</b>: sem NF-e, o marketplace fica bloqueado e a fiscalização pode parar a operação. Passe na <b>Diretoria</b>.</p>
+   <p>Segmento <b>${SEG.name}</b> (${SEG.level}): ${SEG.desc}</p><p>Cada mês: <b>importe</b> na sala Comex (preço de venda e demanda de cada produto estão lá), defina <b>Vendas</b>, <b>invista</b> na Diretoria e rode o mês.</p><p>Você ainda <b>não tem sistema de gestão</b>: sem NF-e, o marketplace fica bloqueado e a fiscalização pode parar a operação. Passe na <b>Diretoria</b>.</p>
    ${mia(PRODUCTS.some(p=>p.anu)?'Antes de comprar, veja quais produtos exigem anuência e solicite já no primeiro mês: o órgão leva de 1 a 2 meses e o embarque só pode sair depois. Enquanto isso, nunca gaste tudo: saldo e tributos só vêm na chegada.':'Comece pequeno. Um pedido LCL chega em 2 meses. Nunca gaste tudo no primeiro mês: o saldo do pedido e os tributos só vêm na chegada.')}
    <p class="small muted">Desafio da semana ${seedStr.split(':')[1]}: todo mundo que jogar ${SEG.name} nesta semana enfrenta o mesmo dólar, a mesma demanda e os mesmos eventos. Seu placar é o print que você compartilha no fim.</p>`,
    buttons:[{label:'Começar',cls:'primary'}]});
@@ -532,7 +532,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
   const lastTurn=s.turn>=12;const breaches=[],licEvents=[],notices=[];
   if(!lastTurn){
     s.turn++;
-    if(s.filial&&s.filial.status==='setup'&&s.filial.ready<=s.turn){s.filial.status='ok';log(s,'Filial em Santa Catarina operando: ICMS da importação diferido (TTD 409) e mais 80 m³ de galpão.');notices.push({aviso:{icon:'office',cls:'good',title:'Filial de Santa Catarina em operação',text:'TTD 409 concedido: ICMS da importação diferido no desembaraço, carga efetiva de <b>2,6% sobre as vendas</b> e mais <b>80 m³</b> de armazenagem.'},dica:'Compare a cascata na sala de compras: o ICMS por dentro saiu do custo de nacionalização. É por isso que tanta importadora opera por Itajaí e Navegantes.'});}
+    if(s.filial&&s.filial.status==='setup'&&s.filial.ready<=s.turn){s.filial.status='ok';log(s,'Filial em Santa Catarina operando: ICMS da importação diferido (TTD 409) e mais 80 m³ de galpão.');notices.push({aviso:{icon:'office',cls:'good',title:'Filial de Santa Catarina em operação',text:'TTD 409 concedido: ICMS da importação diferido no desembaraço, carga efetiva de <b>2,6% sobre as vendas</b> e mais <b>80 m³</b> de armazenagem.'},dica:'Compare a cascata na sala Comex: o ICMS por dentro saiu do custo de nacionalização. É por isso que tanta importadora opera por Itajaí e Navegantes.'});}
     for(const p of PRODUCTS){const l=lic(s,p.id);if(p.anu&&l.status==='pending'&&l.ready<=s.turn){if(rand()<p.anu.risk){l.ready=s.turn+1;licEvents.push({p,kind:'exigencia'});log(s,`${p.anu.org} fez exigência no processo de ${p.name}: mais um mês.`);}else{l.status='ok';licEvents.push({p,kind:'ok'});log(s,`${p.anu.org} liberou ${p.name}. Pode embarcar.`);}}}
     if(SEG.validade){for(const p of PRODUCTS){const st=stk(s,p.id);const v=Math.floor(st.qty*SEG.validade);if(v>0){st.qty-=v;s.m.other+=Math.round(v*st.avg);log(s,`Validade: ${v} ${p.name} vencidas e descartadas.`);}}}
     for(const sup of SUPPLIERS){const r=rel(s,sup.id);if(r.promise&&r.promise.deadline<s.turn){r.promise=null;r.strikes++;
@@ -696,7 +696,7 @@ function setupShare(pat,rev,sl,broke,txt){const c=buildCard(pat,rev,sl,broke);co
 function buyPreview(){const b=ui.buy,p=P(b.pid),sup=SUP(b.sid);const M=MODAIS[b.modal];
   const qty=Math.max(0,Math.floor(b.qty||0));const m3=qty*p.m3;const fobUSD=qty*p.fob*sup.mult;
   const cifUSD=fobUSD+(freightBRL(b.modal,m3)+fobUSD*S.dollar*(b.seguro?0.005:0))/S.dollar;
-  const err=(!licOk(S,b.pid)&&p.anu.pre)?`${p.name} exige ${p.anu.label} antes do embarque. Solicite na sala de compras.`:rel(S,sup.id).blockedUntil>=S.turn?`${sup.name} não aceita pedidos seus até ${monthName(rel(S,sup.id).blockedUntil)}: você descumpriu o acordo de recorrência duas vezes.`:qty<moqOf(S,sup)?`Pedido mínimo deste fornecedor: ${moqOf(S,sup)} unidades.`:(M.maxFOB&&fobUSD>M.maxFOB)?`${M.name} aceita até ${fmtU(M.maxFOB)} FOB por remessa (você tem ${fmtU(fobUSD)}).`:m3<M.minM3?`${M.name} exige ao menos ${M.minM3} m³ (você tem ${m3.toFixed(1)}).`:m3>M.maxM3?`${M.name} aceita até ${M.maxM3} m³ (você tem ${m3.toFixed(1)}).`:
+  const err=(!licOk(S,b.pid)&&p.anu.pre)?`${p.name} exige ${p.anu.label} antes do embarque. Solicite na sala Comex.`:rel(S,sup.id).blockedUntil>=S.turn?`${sup.name} não aceita pedidos seus até ${monthName(rel(S,sup.id).blockedUntil)}: você descumpriu o acordo de recorrência duas vezes.`:qty<moqOf(S,sup)?`Pedido mínimo deste fornecedor: ${moqOf(S,sup)} unidades.`:(M.maxFOB&&fobUSD>M.maxFOB)?`${M.name} aceita até ${fmtU(M.maxFOB)} FOB por remessa (você tem ${fmtU(fobUSD)}).`:m3<M.minM3?`${M.name} exige ao menos ${M.minM3} m³ (você tem ${m3.toFixed(1)}).`:m3>M.maxM3?`${M.name} aceita até ${M.maxM3} m³ (você tem ${m3.toFixed(1)}).`:
     (S.radar.used+cifUSD>RADAR[S.radar.level].limit)?`Estoura o limite do Radar ${RADAR[S.radar.level].name}: ${fmtU(S.radar.used+cifUSD)} CIF de ${fmtU(RADAR[S.radar.level].limit)} no semestre.`:null;
   const sh={pid:b.pid,sid:b.sid,qty,modal:b.modal,fobUSD,freight:Math.round(freightBRL(b.modal,m3)),seguro:b.seguro,insp:!!b.insp,ncmOk:stk(S,b.pid).ncmOk};
   const rate=b.lock?fxRate(S)*(1+FX_LOCK):fxRate(S);const c=cascade(S,sh,rate,'verde');
@@ -1225,7 +1225,7 @@ const myAvatar=()=>AVATARS[S&&S.avatar!=null?S.avatar:0];
 
 /* ===================== ESCRITÓRIO: salas no lugar de abas; o avatar caminha até a sala clicada ===================== */
 const ROOMS=[
- {id:'comprar',name:'Sala de compras',short:'Compras',tint:'#E8F8F3',tintD:'#143530'},
+ {id:'comprar',name:'Comex',short:'Comex',tint:'#E8F8F3',tintD:'#143530'},
  {id:'vendas',name:'Expedição e vendas',short:'Vendas',tint:'#FFF4D6',tintD:'#3A2E10'},
  {id:'investir',name:'Diretoria',short:'Diretoria',tint:'#F3E8FF',tintD:'#2B1F45'},
  {id:'financas',name:'Financeiro',short:'Financeiro',tint:'#E6FFFA',tintD:'#0F3A33'},
@@ -1358,7 +1358,7 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
 }
 const PANELS={comprar:renderComprar,vendas:renderVendas,investir:renderInvestir,financas:renderFinancas,consultoria:renderConsultoria};
 function renderPanel(){if(!PANELS[ui.room])ui.room='comprar';PANELS[ui.room]();highlightRoom();}
-// A antiga sala "Inteligência de mercado" foi distribuída: preço de venda e demanda do produto na sala de compras, dólar no Financeiro, tributos atrás de uma seta na compra.
+// A antiga sala "Inteligência de mercado" foi distribuída: preço de venda e demanda do produto na sala Comex, dólar no Financeiro, tributos atrás de uma seta na compra.
 function demandCells(s,p){const m=(s.turn-1)%12;return [0,1,2].map(i=>{const base=p.base*SEASON[(m+i)%12];const mo=MONTHS[(m+i)%12];if(sysLv(s)>=3){const dm=s.demandMod[p.id];const f=(i===0&&dm&&dm.until>=s.turn)?dm.f:1;return mo+' '+Math.round(base*f/10)*10;}return mo+' ~'+Math.round(base/100)*100;});}
 function lastMonthPanel(s){const last=s.hist[s.hist.length-1];if(!last)return '';
   return `<div class="panel" style="border-color:var(--brand)"><h2>O que aconteceu em ${last.month}</h2>${explainMonth(last)}</div>`;}
@@ -1368,7 +1368,7 @@ function drawDollar(s){const c=$('#dchart');if(!c)return;const x=c.getContext('2
   x.fillStyle=fg;x.font='12px Barlow';h.forEach((v,i)=>{if(i===h.length-1||i%3===0){const px=30+i*(350/11),py=105-(v-mn)/(mx-mn)*90;x.beginPath();x.arc(px,py,3,0,7);x.fill();x.fillText(v.toFixed(2),Math.min(px-12,360),py-8);}});
   x.fillStyle=fg;x.globalAlpha=.6;x.fillText(MONTHS[0],28,118);x.fillText(MONTHS[11],365,118);x.globalAlpha=1;}
 function renderComprar(){const s=S,b=ui.buy;if(!P(b.pid))b.pid=PRODUCTS[0].id;const pv=buyPreview();const sup=SUP(b.sid),p=P(b.pid);
-  $('#tab').innerHTML=`<div class="panel"><h2>Comprar do exterior</h2>
+  $('#tab').innerHTML=`<div class="panel"><h2>Comex: importar</h2>
    <h3 style="margin-top:10px">1. Produto</h3><div class="cards">${PRODUCTS.map(q=>`<div class="card ${b.pid===q.id?'on':''}" data-pid="${q.id}">${spr(q.id,3)}<h3>${q.name}</h3><div class="m">FOB ${fmtU(q.fob)} · ${(q.m3*1000).toFixed(1)} L/un · mercado ${fmt(q.market)}</div><div class="m">${stk(s,q.id).ncm?'NCM '+stk(s,q.id).ncm:'NCM a classificar'} · estoque ${stk(s,q.id).qty}</div>${q.anu?`<div class="m" style="margin-top:4px"><span class="pill ${lic(s,q.id).status==='ok'?'verde':lic(s,q.id).status==='pending'?'amarelo':'vermelho'}">${lic(s,q.id).status==='ok'?q.anu.org+' ok':lic(s,q.id).status==='pending'?q.anu.org+' em análise até '+monthName(lic(s,q.id).ready):'exige '+q.anu.org}</span></div>`:''}</div>`).join('')}</div>
    ${(()=>{const m=(s.turn-1)%12;const transit=s.ships.filter(x=>x.pid===p.id).reduce((a,x)=>a+x.qty,0);const unit=pv.err?null:pv.c.total/pv.sh.qty;const mg=unit?Math.round((marketPrice(s,p.id)*0.82/unit-1)*100):null;
      return `<div class="mkt"><div class="row" style="gap:18px;flex-wrap:wrap;align-items:flex-start">
