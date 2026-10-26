@@ -397,3 +397,8 @@ A mentora Mia foi removida: o painel lateral mostra só o Diário da empresa; no
 ### Easter egg (26/10/2026)
 
 Ao rodar o mês em que o faturamento acumulado cruza R$ 1.000.000, fogos em pixel art tomam a tela por cerca de 4 segundos (canvas por cima de tudo, sem bloquear clique), com o cartaz "R$ 1.000.000 de faturamento" e um aviso no fechamento. Dispara uma vez por partida; com "reduzir movimento" só o cartaz aparece.
+
+
+### Valuation no fim do jogo (26/10/2026)
+
+O número principal da tela final, do card e do texto compartilhado é quanto a empresa vale: patrimônio líquido (caixa + estoque a custo + recebíveis + sinais pagos − dívidas) mais a geração de caixa anualizada (média do resultado dos últimos 3 meses × 12) a um múltiplo de 2,5× ajustado pela confiança da marca. Empresa falida vale zero. O card mostra a composição e termina com "MAINÔ: A ÚNICA EM GESTÃO E COMEX".

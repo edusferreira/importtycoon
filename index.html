@@ -641,12 +641,19 @@ function selos(s,broke){const out=[];
   if(s.stats.lockedBeforeSpike)out.push('Travou o câmbio na hora certa');if(s.wh===0&&s.stats.galpaoNunca&&patrimonio(s)>START_CASH)out.push('Just in time de verdade');
   if(s.radar.level===2)out.push('Radar Ilimitada');if(s.flags.demurrage)out.push('Pagou demurrage e aprendeu');if(hasMaino(s))out.push('Fecha o mês em 2 minutos');if(sysLv(s)===4)out.push('Plano Comando');if(SEG.id==='beleza'&&!broke)out.push('Sobreviveu à Anvisa');if(filialOk(s))out.push('Operação em Santa Catarina');if(level(s).n>=4)out.push('Nível '+level(s).n+': '+level(s).name);
   if(broke)out.push('Quebrou, mas tentou');if(patrimonio(s)>=START_CASH*2)out.push('Dobrou o capital');return out;}
-function queueGameOver(broke){const s=S;s.over=true;const pat=patrimonio(s);const rev=s.hist.reduce((a,h)=>a+h.m.rev,0);const sl=selos(s,broke);
+// Valuation: patrimônio líquido (caixa + estoque a custo + recebíveis + sinais pagos − dívidas) mais a geração de caixa dos últimos 3 meses anualizada,
+// a um múltiplo conservador de 2,5× ajustado pela confiança da marca. Empresa que quebrou vale zero.
+const VAL_MULT=2.5;
+function valuation(s){const estoque=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*stk(s,p.id).avg,0);const recv=s.recv.reduce((a,r)=>a+r.amount,0);const sinais=s.ships.reduce((a,x)=>a+(x.sinalBRL||0),0);
+  const nav=s.cash+estoque+recv+sinais-s.loans.giro-s.loans.finimp;const last=s.hist.slice(-3);const avg=last.length?last.reduce((a,h)=>a+h.m.result,0)/last.length:0;const cf12=Math.max(0,Math.round(avg*12));
+  const mult=Math.round(VAL_MULT*brand(s)*10)/10;const future=Math.round(cf12*mult);const broke=s.negMonths>=2;
+  return {nav:Math.round(nav),cf12,mult,future,valor:broke?0:Math.max(0,Math.round(nav+future)),broke};}
+function queueGameOver(broke){const s=S;s.over=true;const pat=patrimonio(s);const rev=s.hist.reduce((a,h)=>a+h.m.rev,0);const sl=selos(s,broke);const V=valuation(s);const pctV=Math.round((V.valor/START_CASH-1)*100);
   const SITE='https://intelligence.maino.com.br/';
-  const txt=broke?`Quebrei no mês ${s.turn} jogando ImportTycoon (${SEG.name}, ${SEG.level}). Patrimônio final: ${fmt(pat)}. Você sobrevive aos 12 meses? Jogue: ${SITE} #ImportTycoon`:`Fechei o ano no ImportTycoon com patrimônio de ${fmt(pat)} (${pat>=START_CASH?'+':''}${Math.round((pat/START_CASH-1)*100)}% sobre os R$ 150 mil iniciais) em ${SEG.name}, nível ${SEG.level}. Faturamento ${fmt(rev)} em ${s.imports} importações. Você faz melhor? Jogue: ${SITE} #ImportTycoon`;
+  const txt=broke?`Quebrei no mês ${s.turn} jogando ImportTycoon (${SEG.name}, ${SEG.level}). Comecei com R$ 150 mil e a empresa acabou valendo zero. Você sobrevive aos 12 meses? Jogue: ${SITE} #ImportTycoon`:`Comecei com R$ 150 mil e em 12 meses minha importadora vale ${fmt(V.valor)} (${pctV>=0?'+':''}${pctV}%) no ImportTycoon, em ${SEG.name}, nível ${SEG.level}. Faturamento ${fmt(rev)} em ${s.imports} importações. Você faz melhor? Jogue: ${SITE} #ImportTycoon`;
   queue.push({noClose:true,icon:broke?'alerta':'office',title:broke?'Faliu. O banco encerrou a conta.':'Fim do ano fiscal',html:`
-   <div class="kpis"><div class="kpi"><b class="${pat>=START_CASH?'good':'bad'}">${fmt(pat)}</b><span>Patrimônio final</span></div><div class="kpi"><b>${fmt(rev)}</b><span>Faturamento</span></div><div class="kpi"><b>${s.imports}</b><span>Importações</span></div></div>
-   <p class="small muted">Começou com ${fmt(START_CASH)}. ${pat>=START_CASH?'Cresceu '+Math.round((pat/START_CASH-1)*100)+'%.':'Perdeu '+Math.round((1-pat/START_CASH)*100)+'%.'} Quem jogar ${SEG.name} no Desafio ${s.seedStr.split(':')[1]} enfrentou exatamente as mesmas condições: compare os prints.</p>
+   <div class="kpis"><div class="kpi"><b class="${V.valor>=START_CASH?'good':'bad'}">${fmt(V.valor)}</b><span>Sua empresa vale</span></div><div class="kpi"><b>${fmt(V.nav)}</b><span>Patrimônio líquido</span></div><div class="kpi"><b>${fmt(rev)}</b><span>Faturamento</span></div></div>
+   <p class="small muted">Começou com ${fmt(START_CASH)}: ${V.valor>=START_CASH?'+'+pctV+'%':pctV+'%'}. ${broke?'Empresa falida vale zero.':`Valor = patrimônio líquido ${fmt(V.nav)} + geração de caixa de ${fmt(V.cf12)}/ano (média dos últimos 3 meses) × ${String(V.mult).replace('.',',')}${brand(s)<1?' (múltiplo 2,5 ajustado pela confiança da marca de '+Math.round(brand(s)*100)+'%)':''}.`} Quem jogar ${SEG.name} no Desafio ${s.seedStr.split(':')[1]} enfrentou exatamente as mesmas condições: compare os prints.</p>
    <div class="selos">${sl.map(x=>`<span class="selo">${x}</span>`).join('')||'<span class="muted small">Nenhum selo desta vez.</span>'}</div>
    <div class="share"><h3>Seu placar é este print</h3>
    <img id="card" alt="Card com o resultado da partida" style="width:100%;max-width:420px;height:auto;border-radius:12px;display:block;margin:6px auto">
@@ -658,7 +665,7 @@ function queueGameOver(broke){const s=S;s.over=true;const pat=patrimonio(s);cons
    buttons:[{label:'Jogar de novo',cls:'primary',onClick:()=>{S=null;showStart();}}],
    onOpen:()=>{setupShare(pat,rev,sl,broke,txt);}});
 }
-function buildCard(pat,rev,sl,broke){const s=S;const W=1080,H=1080;const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+function buildCard(pat,rev,sl,broke){const s=S;const W=1080,H=1080;const V=valuation(s);const pctV=Math.round((V.valor/START_CASH-1)*100);const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
   const lucro=s.hist.reduce((a,h)=>a+h.m.result,0);const estoqueV=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*stk(s,p.id).avg,0);const estoqueU=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);
   const recv=s.recv.reduce((a,r)=>a+r.amount,0);const divida=s.loans.giro+s.loans.finimp;const margem=rev?Math.round(s.hist.reduce((a,h)=>a+h.m.margin,0)/rev*100):0;
   x.fillStyle='#1A2B4A';x.fillRect(0,0,W,H);x.fillStyle='#00B386';x.fillRect(0,0,W,14);
@@ -666,11 +673,12 @@ function buildCard(pat,rev,sl,broke){const s=S;const W=1080,H=1080;const c=docum
   x.font='600 28px Barlow, sans-serif';x.fillStyle='#9FE8D3';x.fillText(SEG.name+' · '+SEG.level+' · '+(s.mode==='semanal'?'Desafio '+s.seedStr.split(':')[1]:'Desafio'),56,156);
   x.fillStyle='#C9D3E3';x.fillText(s.nick+' · '+myAvatar().name+' · Nível '+level(s).n+' '+level(s).name,56,194);
   drawRows(x,avatarRows(myAvatar(),0),W-56-12*9,70,9);
-  // patrimônio
-  x.fillStyle=broke?'#F06C6C':'#1ED3A5';x.font='800 120px "Barlow Condensed", Impact, sans-serif';x.fillText(fmt(pat),56,330);
-  x.fillStyle='#C9D3E3';x.font='600 26px Barlow, sans-serif';x.fillText((broke?'FALIU NO MÊS '+s.turn+' · ':'PATRIMÔNIO EM 12 MESES · ')+(pat>=START_CASH?'+':'')+Math.round((pat/START_CASH-1)*100)+'% SOBRE OS R$ 150 MIL INICIAIS',58,372);
+  // valor da empresa
+  x.fillStyle='#9FB0C6';x.font='600 24px Barlow, sans-serif';x.fillText(broke?'FALIU NO MÊS '+s.turn+'. A EMPRESA VALE':'COMEÇOU COM R$ 150 MIL. HOJE SUA EMPRESA VALE',58,236);
+  x.fillStyle=broke?'#F06C6C':'#1ED3A5';x.font='800 120px "Barlow Condensed", Impact, sans-serif';x.fillText(fmt(V.valor),56,340);
+  x.fillStyle='#C9D3E3';x.font='600 26px Barlow, sans-serif';x.fillText(broke?'CAPITAL INICIAL PERDIDO':(pctV>=0?'+':'')+pctV+'% SOBRE OS R$ 150 MIL · PATRIMÔNIO LÍQUIDO + 2,5× A GERAÇÃO DE CAIXA',58,378);
   // KPIs
-  const tiles=[['Caixa final',fmt(s.cash)],['Estoque ('+estoqueU+' un.)',fmt(estoqueV)],['Faturamento',fmt(rev)],['Lucro acumulado',fmt(lucro)],['Margem bruta',margem+'%'],['A receber',fmt(recv)],['Dívida',fmt(divida)],['Importações',s.imports+' · '+s.stats.vermelho+' canal vermelho'],['Sistema · Radar '+RADAR[s.radar.level].name,SYSTEMS[sysLv(s)].short]];
+  const tiles=[['Patrimônio líquido',fmt(V.nav)],['Geração de caixa / ano',fmt(V.cf12)],['Caixa final',fmt(s.cash)],['Faturamento',fmt(rev)],['Lucro acumulado',fmt(lucro)],['Margem bruta',margem+'%'],['Estoque ('+estoqueU+' un.)',fmt(estoqueV)],['Dívida',fmt(divida)],['Importações · '+SYSTEMS[sysLv(s)].short,s.imports+' · '+s.stats.vermelho+' canal vermelho']];
   tiles.forEach((t,i)=>{const col=i%3,row=Math.floor(i/3);const px=56+col*330,py=420+row*140;x.fillStyle='#243F70';x.fillRect(px,py,310,120);x.fillStyle='#9FB0C6';x.font='600 20px Barlow, sans-serif';x.fillText(t[0].toUpperCase(),px+18,py+36);x.fillStyle='#fff';x.font='700 '+(t[1].length>18?30:40)+'px "Barlow Condensed", sans-serif';x.fillText(t[1],px+18,py+88);});
   // selos
   let y=880;x.font='700 24px "Barlow Condensed", sans-serif';let cx=56;
@@ -678,7 +686,7 @@ function buildCard(pat,rev,sl,broke){const s=S;const W=1080,H=1080;const c=docum
   // rodapé
   drawSpr(x,'ship',W-56-32*5-170,H-150,5,true);drawSpr(x,'container',W-56-16*5-370,H-80,4);drawSpr(x,'containerG',W-56-16*5-300,H-80,4);
   const LC=6,LN=LOGO8.length;x.fillStyle='#fff';LOGO8.forEach((row,j)=>{[...row].forEach((ch,i)=>{if(ch==='#')x.fillRect(W-56-LN*LC+i*LC,H-56-LN*LC+j*LC,LC,LC);});});
-  x.fillStyle='#9FE8D3';x.font='600 24px Barlow, sans-serif';x.fillText('Um jogo da Mainô, o ERP especializado em importação.',56,H-70);x.fillText('#ImportTycoon  ·  Você faz melhor?',56,H-36);
+  x.fillStyle='#fff';x.font='800 34px "Barlow Condensed", Impact, sans-serif';x.fillText('MAINÔ: A ÚNICA EM GESTÃO E COMEX',56,H-76);x.fillStyle='#9FE8D3';x.font='600 24px Barlow, sans-serif';x.fillText('#ImportTycoon  ·  intelligence.maino.com.br  ·  Você faz melhor?',56,H-36);
   return c;
 }
 function setupShare(pat,rev,sl,broke,txt){const c=buildCard(pat,rev,sl,broke);const img=$('#card');if(!img)return;const url=c.toDataURL('image/png');img.src=url;
