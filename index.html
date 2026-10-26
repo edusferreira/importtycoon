@@ -269,7 +269,14 @@ const RADAR=[{name:'Expressa',limit:50000,cost:0,req:0},{name:'Limitada',limit:1
 const WAREHOUSES=[{name:'Só o escritório',cap:12,rent:0,desc:'12 m³ de sobra na sala. O que passar vai pra armazém 3PL a R$ 150/m³ por mês.'},
                   {name:'Galpão P',cap:80,rent:4000,desc:'80 m³. Cabe um LCL grande ou um FCL apertado.'},
                   {name:'Galpão G',cap:250,rent:9000,desc:'250 m³. Vários contêineres e estoque pra Black Friday.'}];
-const FIXED_COST=5000, GIRO_RATE=0.032, GIRO_MAX=80000, FINIMP_RATE=0.013, FINIMP_MAX=150000, MAINO_FEE=990, BUYER_FEE=5000, THREEPL=150;
+const FIXED_COST=5000, GIRO_RATE=0.032, GIRO_MAX=80000, FINIMP_RATE=0.013, FINIMP_MAX=150000, MAINO_FEE=990, THREEPL=150;
+// Equipe: analista de Comex em três senioridades. Quanto mais sênior, mais desconto no preço do fornecedor e no frete; o sênior ainda conduz a negociação sozinho.
+const ANALISTAS=[null,
+ {lv:1,name:'Analista de Comex júnior',short:'analista júnior',fee:600,disc:0.03,freight:0.05,desc:'Acompanha pedidos e cotações: 3% a menos no preço do fornecedor e 5% a menos no frete.'},
+ {lv:2,name:'Analista de Comex pleno',short:'analista pleno',fee:1200,disc:0.06,freight:0.10,desc:'Cota com vários agentes de carga e negocia prazo: 6% a menos no preço e 10% no frete.'},
+ {lv:3,name:'Analista de Comex sênior',short:'analista sênior',fee:2000,disc:0.09,freight:0.15,desc:'Fala a língua do fornecedor: toda negociação fecha no melhor desconto, sem o minigame, mais 9% a menos no preço e 15% no frete.'},
+];
+const anaLv=s=>s.up.analista||(s.up.buyer?3:0);const anaFee=s=>anaLv(s)?ANALISTAS[anaLv(s)].fee:0;const anaDisc=s=>anaLv(s)?ANALISTAS[anaLv(s)].disc:0;const anaFreight=s=>anaLv(s)?ANALISTAS[anaLv(s)].freight:0;
 const START_CASH=150000;
 const cfAdd=(k,v)=>{const s=S;s.cf||(s.cf={});s.cf[k]=(s.cf[k]||0)+v;};
 const INSP_COST=1800;                                   // inspeção pré-embarque por embarque
@@ -387,7 +394,7 @@ function newGame(mode,nick,avatar,seg){
   applySegment(seg||'eletronicos');ui.buy={pid:PRODUCTS[0].id,sid:'guangzhou',qty:300,modal:'lcl',lock:false,seguro:true,insp:true};
   const seedStr=mode==='semanal'?'semanal:'+isoWeek(new Date())+':'+SEG.id:'sandbox:'+Date.now();
   S={mode,nick:nick||'Importador',seedStr,rng:hash(seedStr),rngW:hash(seedStr+':mundo'),turn:1,cash:START_CASH,dollar:5.20,dHist:[5.20],
-     radar:{level:0,used:0},wh:0,sys:0,seg:SEG.id,lic:{},up:{maino:false,buyer:false},tax:{iiExtra:0,pc:0.1175,icms:0.18},
+     radar:{level:0,used:0},wh:0,sys:0,seg:SEG.id,lic:{},up:{maino:false,analista:0},tax:{iiExtra:0,pc:0.1175,icms:0.18},
      stock:Object.fromEntries(PRODUCTS.map(p=>[p.id,{qty:0,avg:0,price:p.market,channel:'ambos',ncm:null,ncmOk:null}])),
      ships:[],recv:[],loans:{giro:0,finimp:0},imports:0,negMonths:0,log:[],hist:[],priceMod:{},demandMod:{},flags:{},
      m:{rev:0,cmv:0,fees:0,other:0,units:0,landed:0,icmsTTD:0,mkt:0,unmet:0,demandTot:0},filial:{status:'none',ready:0},mkt:0,brand:1,xpRev:0,unitsTot:0,marcos:[],lvl:1,snap:null,cmds:[],replaying:false,cf:{},cashMonthStart:START_CASH,stats:{fcl:0,vermelho:0,lockedBeforeSpike:false,galpaoNunca:true,mainoTurn:null},over:false};
@@ -403,7 +410,7 @@ function newGame(mode,nick,avatar,seg){
 }
 
 /* ===================== CUSTO DE NACIONALIZAÇÃO ===================== */
-function freightBRL(modal,m3){const M=MODAIS[modal];return M.fixed+M.perM3*m3;}
+function freightBRL(modal,m3){const M=MODAIS[modal];return (M.fixed+M.perM3*m3)*(1-anaFreight(S));}
 function cascade(s,sh,rate,canal){
   const M=MODAIS[sh.modal],t=s.tax;
   const fobBRL=sh.fobUSD*rate, frete=sh.freight, seguro=sh.seguro?Math.round(fobBRL*0.005):0;
@@ -494,7 +501,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
   }
   s.ships=s.ships.filter(x=>!x.done);
   // 4. custos fixos e financeiros
-  let fixed=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  let fixed=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const over=Math.max(0,stockM3(s)-whCap(s));const pl=Math.round(over*THREEPL);fixed+=pl;
   const interest=Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE);
   let nfe=0;if(sysLv(s)===1&&arrivalsN>0&&rand()<0.35){nfe=Math.max(1500,Math.round(landedThisMonth*0.03));log(s,`Erro na NF-e de importação: CFOP e base de ICMS divergentes. ${fmt(nfe)} de retrabalho e multa.`);}
@@ -696,13 +703,13 @@ function askNCM(pid,then){const p=P(pid);const opts=[...p.ncm];for(let i=opts.le
 }
 function negotiate(pv){const sup=SUP(ui.buy.sid);const r=rel(S,sup.id);
   if(r.promise&&r.promise.remaining>0){finishBuy(pv,'good',{why:`Preço de volume já combinado com ${sup.name}: desconto aplicado sem nova negociação.`},'promise');return;}
-  if(S.up.buyer){finishBuy(pv,'good',sup.opts.find(o=>o.k==='good'),'buyer');return;}
+  if(anaLv(S)>=3){finishBuy(pv,'good',sup.opts.find(o=>o.k==='good'),'buyer');return;}
   const opts=[...sup.opts];for(let i=opts.length-1;i>0;i--){const j=randIdx(i+1);[opts[i],opts[j]]=[opts[j],opts[i]];}
   openModal({icon:'sup'+(SUPPLIERS.indexOf(sup)+1),title:`Negociação com ${sup.flag} ${sup.name}`,closeHint:'Fechar cancela a negociação sem custo: o sinal só é pago depois da sua resposta.',html:`<div class="msg"><div class="orig">${sup.msg.orig}</div><div class="tr">Tradução automática: ${sup.msg.tr}</div></div><p class="small muted">Como você responde?</p>${opts.map((o,i)=>`<button class="opt" data-i="${i}">${o.t}</button>`).join('')}`,buttons:[],
    onOpen:()=>{document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const o=opts[+b.dataset.i];closeModal();finishBuy(pv,o.k,o,false);});}});
 }
 function finishBuy(pv,k,o,auto,rolls){const s=S,b=ui.buy,sup=SUP(b.sid),p=P(b.pid);ensureSnap();const ncmBefore={c:stk(s,b.pid).ncm,ok:stk(s,b.pid).ncmOk};const r=rel(s,sup.id);const upset=r.upsetUntil>=s.turn;
-  let disc=upset?1.05:k==='good'?0.94:k==='bad'?1.03:1;if(r.partner&&!upset)disc*=0.98;
+  let disc=upset?1.05:k==='good'?0.94:k==='bad'?1.03:1;if(r.partner&&!upset)disc*=0.98;disc*=(1-anaDisc(s));
   let relMsg='';
   if(!upset){if(r.promise){r.promise.remaining--;if(r.promise.remaining<=0){r.promise=null;r.partner=true;relMsg=`<p class="good">Acordo cumprido com ${sup.name}. Virou parceiro: 2% de desconto extra em todos os próximos pedidos.</p>`;log(s,`Cumpriu o acordo de recorrência com ${sup.name}. Agora é parceiro.`);}else{r.promise.deadline=s.turn+r.promise.gap;relMsg=`<p>Acordo com ${sup.name}: falta${r.promise.remaining>1?'m':''} <b>${r.promise.remaining}</b> pedido(s), o próximo até <b>${monthName(r.promise.deadline)}</b>.</p>`;}}
     else if(k==='good'&&o.promise){r.promise={remaining:o.promise.more,deadline:s.turn+o.promise.gap,gap:o.promise.gap};relMsg=`<p><b>Compromisso assumido:</b> mais ${o.promise.more} pedido(s) a ${sup.name}, o próximo até <b>${monthName(r.promise.deadline)}</b>. O desconto vale para todos eles sem nova negociação.</p>`;}}
@@ -716,7 +723,7 @@ function finishBuy(pv,k,o,auto,rolls){const s=S,b=ui.buy,sup=SUP(b.sid),p=P(b.pi
   log(s,`Pedido: ${sh.qty} ${p.name} de ${sup.name}, ${fmtU(sh.fobUSD)}${disc<1?' (com desconto)':disc>1?' (sem desconto, preço subiu)':''}. Sinal ${fmt(sinal)}. ${MODAIS[b.modal].name.split(' (')[0]}, chega no mês ${sh.eta}.`);
   renderGame();
   if(s.replaying)return;
-  openModal({icon:'container',title:upset?`${sup.name} ainda está chateado: 5% a mais`:k==='good'?`Fechou com desconto de ${Math.round((1-disc)*100)}%`:k==='bad'?'Fechou, mas pagou 3% a mais':r.partner?'Fechou com 2% de parceiro':'Fechou no preço de lista',html:`${auto==='buyer'?'<p>Seu comprador internacional conduziu a negociação.</p>':''}${relMsg}<p>${sh.qty} <b>${p.name}</b> por ${fmtU(sh.fobUSD)}. Sinal de ${Math.round(sup.deposit*100)}% pago agora: <b>${fmt(sinal)}</b>. Saldo e tributos na chegada, prevista para <b>${monthName(sh.eta)}</b>${sh.eta===s.turn?' (ainda este mês)':''}.</p>${mia(upset?'Promessa quebrada tem preço. Ele vai voltar ao normal com o tempo, mas o desconto de volume só volta com um novo acordo cumprido.':o.why)}`,buttons:[{label:'Ok',cls:'primary'}]});
+  openModal({icon:'container',title:upset?`${sup.name} ainda está chateado: 5% a mais`:k==='good'?`Fechou com desconto de ${Math.round((1-disc)*100)}%`:k==='bad'?'Fechou, mas pagou 3% a mais':r.partner?'Fechou com 2% de parceiro':'Fechou no preço de lista',html:`${auto==='buyer'?'<p>Seu analista de Comex sênior conduziu a negociação.</p>':''}${anaLv(s)?`<p class="small muted">${ANALISTAS[anaLv(s)].name}: ${Math.round(anaDisc(s)*100)}% a menos no preço e ${Math.round(anaFreight(s)*100)}% no frete já aplicados.</p>`:''}${relMsg}<p>${sh.qty} <b>${p.name}</b> por ${fmtU(sh.fobUSD)}. Sinal de ${Math.round(sup.deposit*100)}% pago agora: <b>${fmt(sinal)}</b>. Saldo e tributos na chegada, prevista para <b>${monthName(sh.eta)}</b>${sh.eta===s.turn?' (ainda este mês)':''}.</p>${mia(upset?'Promessa quebrada tem preço. Ele vai voltar ao normal com o tempo, mas o desconto de volume só volta com um novo acordo cumprido.':o.why)}`,buttons:[{label:'Ok',cls:'primary'}]});
 }
 
 /* ===================== DECISÕES DO MÊS: registro, snapshot e desfazer ===================== */
@@ -731,7 +738,8 @@ function replayCmd(c){const s=S;
     case 'licenca':{const p=P(c.pid);if(!p||!p.anu||lic(s,c.pid).status!=='none'||s.cash<p.anu.cost)return false;doLicenca(c.pid);return true;}
     case 'warehouse':if(c.i<=s.wh)return false;doWarehouse(c.i);return true;
     case 'sistema':if(c.lv<=sysLv(s))return false;doSistema(c.lv);return true;
-    case 'buyer':if(s.up.buyer)return false;doBuyer();return true;
+    case 'buyer':if(anaLv(s)>=3)return false;doAnalista(3);return true;
+    case 'analista':if(c.lv<=anaLv(s))return false;doAnalista(c.lv);return true;
     case 'radar':{const nx=RADAR[s.radar.level+1];if(!nx||s.imports<nx.req||s.cash<nx.cost)return false;doRadar();return true;}
     case 'filial':if((s.filial&&s.filial.status!=='none')||s.cash<FILIAL.setup)return false;doFilial();return true;
     case 'loan':if(c.amt<0&&s.loans[c.kind]<=0)return false;doLoan(c.kind,c.amt);return true;
@@ -744,7 +752,7 @@ function undoCmd(i){const s=S;if(!s.snap)return;const keep=(s.cmds||[]).filter((
 function revisarMes(dropped,removed){const s=S;const cmds=s.cmds||[];const set=captureSettings(s);
   const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
-  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
   openModal({icon:'coin',title:`Revisar e rodar ${monthName(s.turn)}`,html:`
    ${removed?`<p class="good small">Desfeito: ${removed.desc}.${dropped&&dropped.length?` <span class="warn">Caíram junto por depender dela: ${dropped.map(d=>d.desc).join('; ')}.</span>`:''}</p>`:''}
@@ -767,8 +775,8 @@ function contratarSistema(lv){const t=SYSTEMS[lv];if(lv<=sysLv(S))return;confirm
 function doSistema(lv){ensureSnap();pushCmd({t:'sistema',lv,desc:`Contratou ${SYSTEMS[lv].name} (${fmt(SYSTEMS[lv].fee)}/mês)`,custo:0});S.sys=lv;S.up.maino=lv>=2;if(lv>=2&&!S.stats.mainoTurn)S.stats.mainoTurn=S.turn;log(S,`Contratou ${SYSTEMS[lv].name}.`);renderGame();}
 function buyMaino(){confirmar({icon:'mia',title:`Contratar a Mainô por ${fmt(MAINO_FEE)}/mês?`,yes:'Contratar',onYes:doMaino,html:`<p>NF-e de importação sem erro, metade do risco de canal vermelho, aviso antecipado de mudança de alíquota, sugestão de NCM. Economiza R$ 800/mês de retrabalho e R$ 500 por processo no despachante.</p>`});}
 function doMaino(){doSistema(2);}
-function buyBuyer(){confirmar({icon:'sup2',title:`Contratar comprador internacional por ${fmt(BUYER_FEE)}/mês?`,yes:'Contratar',onYes:doBuyer,html:`<p>Fala a língua do fornecedor: toda negociação fecha com o melhor desconto. Custo fixo mensal até o fim do ano.</p>`});}
-function doBuyer(){ensureSnap();pushCmd({t:'buyer',desc:`Contratou comprador internacional (${fmt(BUYER_FEE)}/mês)`,custo:0});S.up.buyer=true;log(S,'Contratou comprador internacional.');renderGame();}
+function contratarAnalista(lv){const A=ANALISTAS[lv];const cur=anaLv(S);if(!A||lv<=cur)return;confirmar({icon:'sup2',title:`${cur?'Promover para':'Contratar'} ${A.name} por ${fmt(A.fee)}/mês?`,yes:cur?'Promover':'Contratar',onYes:()=>doAnalista(lv),html:`<p>${A.desc}</p><p class="small muted">Custo fixo mensal até o fim do ano${cur?`, no lugar dos ${fmt(ANALISTAS[cur].fee)} atuais`:''}. Vale a pena quando o volume comprado por mês passa de uns ${fmt(Math.round(A.fee/(A.disc+A.freight*0.15)/1000)*1000)} em FOB.</p>`});}
+function doAnalista(lv){const A=ANALISTAS[lv];ensureSnap();pushCmd({t:'analista',lv,desc:`${anaLv(S)?'Promoveu':'Contratou'} ${A.name} (${fmt(A.fee)}/mês)`,custo:0});S.up.analista=lv;delete S.up.buyer;log(S,`${A.name} na equipe.`);renderGame();}
 function abrirFilial(){const s=S;if(s.filial&&s.filial.status!=='none')return;const falta=s.imports<FILIAL.reqImports?`Exige ${FILIAL.reqImports} importações concluídas (você tem ${s.imports}).`:s.radar.level<FILIAL.reqRadar?'Exige Radar Limitada ou Ilimitada.':s.cash<FILIAL.setup?'Caixa insuficiente.':null;if(falta)return;
   confirmar({icon:'office',title:`Abrir ${FILIAL.name} por ${fmt(FILIAL.setup)}?`,yes:'Abrir filial',onYes:doFilial,html:`<p><b>Implantação:</b> ${fmt(FILIAL.setup)} agora (abertura, inscrição estadual, estrutura, consultoria para o TTD). <b>Custo fixo:</b> ${fmt(FILIAL.rent)}/mês a partir de agora. <b>Pronta em ${FILIAL.lead} meses.</b></p><p><b>Efeito:</b> ICMS da importação diferido no desembaraço (hoje 18% por dentro) e carga efetiva de ${(FILIAL.icmsEfetivo*100).toFixed(1).replace('.',',')}% sobre as vendas; mais ${FILIAL.cap} m³ de galpão.</p><p class="small muted">Benefício oneroso: a filial precisa operar de verdade. Com a Reforma Tributária os benefícios de ICMS caem gradualmente de 2029 a 2032.</p>`});}
 function doFilial(){const s=S;ensureSnap();pushCmd({t:'filial',desc:`Abriu ${FILIAL.name}`,custo:FILIAL.setup});s.cash-=FILIAL.setup;cfAdd('invest',FILIAL.setup);s.filial={status:'setup',ready:s.turn+FILIAL.lead};log(s,`Abriu ${FILIAL.name}: ${fmt(FILIAL.setup)}. Operação prevista para ${monthName(s.filial.ready)}.`);renderGame();}
@@ -1300,7 +1308,7 @@ function confirmar(o){openModal({icon:o.icon||'alerta',title:o.title,html:o.html
 function confirmClose(){const s=S;
   const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
-  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
   confirmar({icon:'coin',title:`Rodar o mês de ${monthName(s.turn)}?`,yes:'Rodar o mês',onYes:closeMonth,html:`
    <p><b>Vendas previstas:</b> ${vendas.length?vendas.join(', '):'nenhuma (sem estoque)'}.</p>
@@ -1338,7 +1346,7 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
     </div></div>
     <div class="timeline" aria-label="Linha do tempo: 12 rodadas, uma por mês"><span class="tl-cap">${s.over?'Fim de jogo':'Rodada '+s.turn+' de 12'}</span>${MONTHS.map((mo,i)=>{const t=i+1;const st=s.over||t<s.turn?'done':t===s.turn?'now':'';const just=statPrev&&(t===s.turn-1||t===s.turn)?' just':'';return `<span class="m ${st}${just}" title="${mo}: ${st==='done'?'rodado':st==='now'?'mês atual, tome as decisões e rode o mês':'ainda vem'}"><i></i>${mo}</span>`;}).join('')}</div></header>
   <div class="wrap"><div class="grid"><section>
-    <div class="base" style="flex-direction:column;align-items:stretch;gap:6px"><canvas id="base" width="720" height="180"></canvas><div class="cap">${s.ships.length} embarque(s) em trânsito · ${SYSTEMS[sysLv(s)].short}${s.up.buyer?' · comprador internacional':''}</div></div>
+    <div class="base" style="flex-direction:column;align-items:stretch;gap:6px"><canvas id="base" width="720" height="180"></canvas><div class="cap">${s.ships.length} embarque(s) em trânsito · ${SYSTEMS[sysLv(s)].short}${anaLv(s)?' · '+ANALISTAS[anaLv(s)].short:''}</div></div>
     <div class="panel office-wrap"><canvas id="office" width="720" height="216" aria-label="Planta do escritório: clique numa sala"></canvas><nav class="rooms" aria-label="Salas">${ROOMS.map(r=>`<button data-room="${r.id}" aria-current="${(walk?walk.target:ui.room)===r.id}">${r.name}</button>`).join('')}</nav></div>
     <div id="tab"></div>
     <div class="actions"><button class="primary big" id="close" ${s.over?'disabled':''}>Rodar o mês de ${monthName(s.turn)} ▸</button></div>
@@ -1424,7 +1432,7 @@ function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];
    <h3 style="margin-top:14px">Sistema de gestão</h3><p class="small muted">${sysLv(s)===0?'Sem sistema você não emite nota: marketplace bloqueado e risco de a fiscalização parar sua operação.':'Plano atual: '+SYSTEMS[sysLv(s)].name+'.'}</p><div class="cards" style="margin-top:8px">
     ${SYSTEMS.slice(1).map(t=>`<div class="card ${sysLv(s)===t.lv?'on':''}">${t.lv>=2?spr('mia',2):spr('box',2)}<h3>${t.name} ${tip(t.desc)}</h3><div class="m">${fmt(t.fee)}/mês</div>${sysLv(s)===t.lv?'<div class="m good" style="margin-top:8px">plano atual</div>':sysLv(s)>t.lv?'<div class="m muted" style="margin-top:8px">superado</div>':`<button class="${t.lv>=2?'primary':''}" style="margin-top:8px" data-sys="${t.lv}">${sysLv(s)>0?'Fazer upgrade':'Contratar'}</button>`}</div>`).join('')}
     </div><h3 style="margin-top:14px">Equipe</h3><div class="cards" style="margin-top:8px">
-    <div class="card ${s.up.buyer?'on':''}"><h3>Comprador internacional ${tip('Fala a língua do fornecedor: toda negociação fecha automaticamente com o melhor desconto, sem o minigame. Custo fixo mensal até o fim do ano.')}</h3><div class="m">${fmt(BUYER_FEE)}/mês</div>${s.up.buyer?'<div class="m good" style="margin-top:8px">contratado</div>':'<button style="margin-top:8px" id="buyer">Contratar</button>'}</div>
+    ${ANALISTAS.slice(1).map(A=>`<div class="card ${anaLv(s)===A.lv?'on':''}">${spr('sup2',2)}<h3>${A.name} ${tip(A.desc+' Custo fixo mensal até o fim do ano; dá para promover depois.')}</h3><div class="m">${fmt(A.fee)}/mês · -${Math.round(A.disc*100)}% preço · -${Math.round(A.freight*100)}% frete</div>${anaLv(s)===A.lv?'<div class="m good" style="margin-top:8px">na equipe</div>':anaLv(s)>A.lv?'<div class="m muted" style="margin-top:8px">abaixo do atual</div>':`<button style="margin-top:8px" data-ana="${A.lv}">${anaLv(s)?'Promover':'Contratar'}</button>`}</div>`).join('')}
    </div>
    <h3 style="margin-top:14px">Nível da empresa</h3><p class="small">Nível <b>${level(s).n} · ${level(s).name}</b>. ${level(s).perk}</p>${nextLevel(s)?`<div class="bar" style="max-width:420px;margin-top:6px"><i style="width:${Math.min(100,Math.round(xp(s)/nextLevel(s).xp*100))}%"></i></div><p class="small muted" style="margin-top:4px">${fmt(xp(s))} de ${fmt(nextLevel(s).xp)} de experiência para <b>${nextLevel(s).name}</b> (${nextLevel(s).perk}). Experiência = faturamento acumulado + ${fmt(MARCO_XP)} por marco.</p>`:'<p class="small good">Nível máximo alcançado.</p>'}
    <h3 style="margin-top:14px">Marcos</h3><div class="tbl"><table>${MARCOS.map(mc=>`<tr><td>${(s.marcos||[]).includes(mc.id)?'<span class="pill verde">feito</span>':'<span class="pill info">pendente</span>'}</td><td>${mc.name}</td></tr>`).join('')}</table></div>
@@ -1435,10 +1443,10 @@ function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];
    ${nx?`<p class="small" style="margin-top:8px">Próxima: <b>modalidade ${nx.name}</b> (${nx.limit===Infinity?'sem limite':'até '+fmtU(nx.limit)+' CIF por semestre'}). Custo ${fmt(nx.cost)} em consultoria e revisão da capacidade financeira estimada pela Receita. Exige ${nx.req} importação(ões) concluída(s).</p><button style="margin-top:8px" id="radar" ${s.imports<nx.req||s.cash<nx.cost?'disabled':''}>Habilitar Radar ${nx.name}</button>`:'<p class="small good">Radar Ilimitado. Sem teto de volume.</p>'}
    ${mia('Radar é a habilitação da Receita pra operar no Siscomex (IN RFB 1.984/2020). A modalidade Expressa sai automática e limita US$ 50 mil CIF por semestre: dá pra um ou dois pedidos. Limitada vai a US$ 150 mil; Ilimitada depende da capacidade financeira estimada.')}</div>`;
   document.querySelectorAll('[data-wh]').forEach(e=>e.onclick=()=>buyWarehouse(+e.dataset.wh));
-  document.querySelectorAll('[data-sys]').forEach(b=>b.onclick=()=>contratarSistema(+b.dataset.sys));const bu=$('#buyer');if(bu)bu.onclick=buyBuyer;const r=$('#radar');if(r)r.onclick=upRadar;const fb=$('#filial');if(fb)fb.onclick=abrirFilial;
+  document.querySelectorAll('[data-sys]').forEach(b=>b.onclick=()=>contratarSistema(+b.dataset.sys));document.querySelectorAll('[data-ana]').forEach(b=>b.onclick=()=>contratarAnalista(+b.dataset.ana));const r=$('#radar');if(r)r.onclick=upRadar;const fb=$('#filial');if(fb)fb.onclick=abrirFilial;
 }
 function projectCash(s){const rows=[];let cash=s.cash;const stock=Object.fromEntries(PRODUCTS.map(p=>[p.id,stk(s,p.id).qty]));const recv={};for(const r of s.recv){recv[r.due]=(recv[r.due]||0)+r.amount;}
-  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+(s.up.buyer?BUYER_FEE:0)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const juros=Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE);const saveTurn=s.turn;
   for(let m=s.turn;m<=12;m++){s.turn=m;let vendas=0,b2bNew=0,ttd=0;
     for(const p of PRODUCTS){const st=stk(s,p.id);if(stock[p.id]<=0)continue;const d=demandFor(s,p.id,st.price,st.channel,1);let left=stock[p.id];const qMp=Math.min(left,Math.round(d.mp));left-=qMp;const qB=Math.min(left,Math.round(d.b2b));left-=qB;stock[p.id]=left;vendas+=qMp*st.price*0.82;b2bNew+=qB*st.price;if(filialOk(s)&&(s.filial.ready||0)<=m)ttd+=Math.round((qMp+qB)*st.price*FILIAL.icmsEfetivo);}
