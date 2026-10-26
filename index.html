@@ -363,7 +363,11 @@ const pct=r=>(Math.round(r*10000)/100).toString().replace('.',',')+'%';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const P=id=>PRODUCTS.find(p=>p.id===id), SUP=id=>SUPPLIERS.find(x=>x.id===id);
 function hash(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return (h>>>0)||1;}
-function rand(){let t=S.rng+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}
+function mulberry(st){let t=st+0x6D2B79F5;let x=t;x=Math.imul(x^x>>>15,x|1);x^=x+Math.imul(x^x>>>7,x|61);return {st:t,v:((x^x>>>14)>>>0)/4294967296};}
+// Dois geradores com a mesma semente semanal: rand() para sorteios que dependem das ações do jogador (negociação, golpe, canal, lote, inadimplência)
+// e randW() para o "mundo" (dólar, evento do mês, variação da demanda), que anda um número fixo de vezes por mês. Assim todo mundo da semana vê o mesmo mundo.
+function rand(){const r=mulberry(S.rng);S.rng=r.st;return r.v;}
+function randW(){if(S.rngW==null)S.rngW=hash((S.seedStr||'x')+':mundo');const r=mulberry(S.rngW);S.rngW=r.st;return r.v;}
 const randIdx=n=>Math.floor(rand()*n);
 function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=t.getUTCFullYear();const w=Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7);return `${y}-S${String(w).padStart(2,'0')}`;}
 const stk=(s,pid)=>s.stock[pid];
@@ -381,12 +385,12 @@ const radarUsed=s=>s.radar.used;
 function newGame(mode,nick,avatar,seg){
   applySegment(seg||'eletronicos');ui.buy={pid:PRODUCTS[0].id,sid:'guangzhou',qty:300,modal:'lcl',lock:false,seguro:true,insp:true};
   const seedStr=mode==='semanal'?'semanal:'+isoWeek(new Date())+':'+SEG.id:'sandbox:'+Date.now();
-  S={mode,nick:nick||'Importador',seedStr,rng:hash(seedStr),turn:1,cash:START_CASH,dollar:5.20,dHist:[5.20],
+  S={mode,nick:nick||'Importador',seedStr,rng:hash(seedStr),rngW:hash(seedStr+':mundo'),turn:1,cash:START_CASH,dollar:5.20,dHist:[5.20],
      radar:{level:0,used:0},wh:0,sys:0,seg:SEG.id,lic:{},up:{maino:false,buyer:false},tax:{iiExtra:0,pc:0.1175,icms:0.18},
      stock:Object.fromEntries(PRODUCTS.map(p=>[p.id,{qty:0,avg:0,price:p.market,channel:'ambos',ncm:null,ncmOk:null}])),
      ships:[],recv:[],loans:{giro:0,finimp:0},imports:0,negMonths:0,log:[],hist:[],priceMod:{},demandMod:{},flags:{},
      m:{rev:0,cmv:0,fees:0,other:0,units:0,landed:0,icmsTTD:0,mkt:0,unmet:0,demandTot:0},filial:{status:'none',ready:0},mkt:0,brand:1,xpRev:0,unitsTot:0,marcos:[],lvl:1,snap:null,cmds:[],replaying:false,cf:{},cashMonthStart:START_CASH,stats:{fcl:0,vermelho:0,lockedBeforeSpike:false,galpaoNunca:true,mainoTurn:null},over:false};
-  S.avatar=avatar||0;for(let i=0;i<3;i++)rand();
+  S.avatar=avatar||0;for(let i=0;i<3;i++){rand();randW();}
   log(S,`Empresa aberta. ${fmt(START_CASH)} em caixa, Radar ${RADAR[0].name}.`);
   ui.room='mercado';walk=null;
   renderGame();
@@ -441,8 +445,8 @@ function closeMonth(){
   // 1. vendas
   const parado=s.flags.parado===s.turn;
   let demandTot=0,unmet=0;
-  for(const p of PRODUCTS){const st=stk(s,p.id);if(parado)continue;
-    const noise=0.9+rand()*0.2;const d=demandFor(s,p.id,st.price,st.channel,noise);
+  for(const p of PRODUCTS){const noise=0.9+randW()*0.2;const st=stk(s,p.id);if(parado)continue; // sorteio antes do continue: o mundo anda igual para todos
+const d=demandFor(s,p.id,st.price,st.channel,noise);
     const ativo=st.qty>0||(st.lastStock!=null&&s.turn-st.lastStock<=2);if(st.qty>0)st.lastStock=s.turn;
     if(ativo){demandTot+=Math.round(d.mp)+Math.round(d.b2b);}
     const dem={mp:Math.round(d.mp),b2b:Math.round(d.b2b)};
@@ -518,7 +522,7 @@ function closeMonth(){
       else{r.blockedUntil=s.turn+2;r.partner=false;breaches.push({sup,kind:'blocked'});log(s,`${sup.name} parou de atender você até ${monthName(r.blockedUntil)}: segunda promessa descumprida.`);}}}
     if(s.turn===7){s.radar.used=0;log(s,'Novo semestre: limite do Radar renovado.');}
     if(s.flags.aliqUntil&&s.turn>s.flags.aliqUntil){s.tax.iiExtra=0;delete s.flags.aliqUntil;log(s,'Alíquota do II voltou ao normal.');}
-    const prev=s.dollar;const g=(rand()+rand()+rand()-1.5)/1.5;s.dollar=Math.max(3.8,s.dollar*(1+0.003+g*0.035));report.dollarPrev=prev;report.dollarNext=s.dollar;
+    const prev=s.dollar;const g=(randW()+randW()+randW()-1.5)/1.5;s.dollar=Math.max(3.8,s.dollar*(1+0.003+g*0.035));report.dollarPrev=prev;report.dollarNext=s.dollar;
     s.dHist.push(s.dollar);
     if(s.dollar/prev>1.05&&s.ships.some(x=>x.lockRate))s.stats.lockedBeforeSpike=true;
   }
@@ -588,11 +592,14 @@ function queueReport(r,avisos,dicas){const m=r.m;const cls=v=>v<0?'bad':'good';a
    ${dicas.length?`<details class="dicas"><summary>Dicas da Mia (${dicas.length})</summary><ul>${dicas.map(d=>`<li>${d}</li>`).join('')}</ul></details>`:''}`,buttons:[{label:'Próximo mês',cls:'primary'}]});
 }
 function queueEvent(avisos,dicas){const s=S;
+  const gate=randW(),pick=randW(); // os dois sorteios do mundo acontecem todo mês, para todo mundo, antes de qualquer desvio
   if(s.flags.aliqPending===s.turn){delete s.flags.aliqPending;s.flags.aliqDone=true;s.tax.iiExtra=0.04;s.flags.aliqUntil=s.turn+2;
     avisos.push({icon:'officer',cls:'warn',title:'Alíquota do II subiu',text:'Elevação de 4 pontos no Imposto de Importação, por 3 meses.'});dicas.push('Você soube com um mês de antecedência e pôde adiantar pedidos. É o que um sistema atualizado faz.');return null;}
-  if(rand()>0.72)return null;
-  const pool=EVENTS.filter(e=>!e.cond||e.cond(s));const tot=pool.reduce((a,e)=>a+e.w,0);let r=rand()*tot;let ev=pool[pool.length-1];
+  if(gate>0.72)return null;
+  // O evento do mês é o mesmo para todo mundo da semana: sorteio sobre a lista completa. Se não se aplica a esta empresa (sem carga no porto, sem estoque), o mês passa sem evento.
+  const pool=EVENTS;const tot=pool.reduce((a,e)=>a+e.w,0);let r=pick*tot;let ev=pool[pool.length-1];
   for(const e of pool){r-=e.w;if(r<=0){ev=e;break;}}
+  if(ev.cond&&!ev.cond(s))return null;
   if(ev.id==='aliquota'&&hasMaino(s)){s.flags.aliqPending=s.turn+1;s.flags.aliqDone=true;
     avisos.push({icon:'mia',cls:'warn',title:'Mia avisa: alíquota vai mudar',text:'A Receita publicou aumento de 4 pontos no II dos seus produtos. Entra em vigor <b>no mês que vem</b> e dura 3 meses.'});dicas.push('Pedido que chegar este mês ainda paga a alíquota atual. Se for comprar, compre agora via aéreo ou courier.');return null;}
   const d=ev.setup?ev.setup(s):null;const text=ev.textFn?ev.textFn(d):ev.text;
@@ -729,10 +736,10 @@ function replayCmd(c){const s=S;
     case 'loan':if(c.amt<0&&s.loans[c.kind]<=0)return false;doLoan(c.kind,c.amt);return true;
     case 'antecipar':if(!s.recv.length)return false;doAntecipar();return true;
   }return false;}
-function undoCmd(i){const s=S;if(!s.snap)return;const keep=(s.cmds||[]).filter((_,j)=>j!==i);const removed=(s.cmds||[])[i];const settings=captureSettings(s);const rng=s.rng;const snap=s.snap;const buyNow={...ui.buy};
+function undoCmd(i){const s=S;if(!s.snap)return;const keep=(s.cmds||[]).filter((_,j)=>j!==i);const removed=(s.cmds||[])[i];const settings=captureSettings(s);const rng=s.rng,rngW=s.rngW;const snap=s.snap;const buyNow={...ui.buy};
   const restored=JSON.parse(JSON.stringify(snap));restored.snap=snap;restored.cmds=[];restored.replaying=true;S=restored;applySettings(S,settings);
   const dropped=[];for(const c of keep){let ok=false;try{ok=replayCmd(c);}catch(e){ok=false;}if(ok)S.cmds.push(c);else dropped.push(c);}
-  S.replaying=false;S.rng=rng;ui.buy=buyNow;if(!S.cmds.length)S.snap=null;log(S,`Desfez: ${removed.desc}.`);renderGame();revisarMes(dropped,removed);}
+  S.replaying=false;S.rng=rng;S.rngW=rngW;ui.buy=buyNow;if(!S.cmds.length)S.snap=null;log(S,`Desfez: ${removed.desc}.`);renderGame();revisarMes(dropped,removed);}
 function revisarMes(dropped,removed){const s=S;const cmds=s.cmds||[];const set=captureSettings(s);
   const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);

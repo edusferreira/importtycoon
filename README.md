@@ -13,6 +13,7 @@ Um único arquivo HTML, sem backend. Modo único: Desafio da semana, com a mesma
 | `docs/spec.md` | Especificação do jogo: pilares, sistemas, segmentos, balanceamento e conceitos de Comex verificados |
 | `sim/sim.mjs` | Simulador com bots (mestre, prudente, ingênuo, passivo, afobado, imprudente) para balanceamento |
 | `sim/play.mjs` | Partida roteirizada "humana" para conferir o loop ponta a ponta |
+| `sim/mundo.mjs` | Prova de que jogadores com decisões diferentes veem o mesmo dólar e os mesmos eventos na mesma semana |
 
 ## Rodar localmente
 

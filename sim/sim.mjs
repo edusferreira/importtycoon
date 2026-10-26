@@ -27,7 +27,7 @@ function makeEngine() {
 function run(bot, seed, seg = 'eletronicos') {
   const c = makeEngine();
   const g = (code) => vm.runInContext(code, c);
-  g(`newGame('sandbox','bot',0,'${seg}'); S.seedStr='sim:${seed}'; S.rng=hash(S.seedStr); queue=[]; for(const p of PRODUCTS) if(p.anu) doLicenca(p.id);`);
+  g(`newGame('sandbox','bot',0,'${seg}'); S.seedStr='sim:${seed}'; S.rng=hash(S.seedStr);S.rngW=hash(S.seedStr+':mundo'); queue=[]; for(const p of PRODUCTS) if(p.anu) doLicenca(p.id);`);
   const S = g('S');
   const api = {
     S, c, g, seg, main: seg === 'eletronicos' ? 'fone' : seg === 'pet' ? 'coleira' : 'serum',
@@ -253,7 +253,7 @@ if (process.argv.includes('--diag')) {
   const seed = +(process.argv[process.argv.indexOf('--diag') + 2] || 0);
   let last;
   const origRun = run;
-  const r = (function () { const bot = bots[name]; const cc = makeEngine(); const gg = (x) => vm.runInContext(x, cc); gg(`newGame('sandbox','bot',0,'eletronicos'); S.seedStr='sim:${seed}'; S.rng=hash(S.seedStr); queue=[]; for(const p of PRODUCTS) if(p.anu) doLicenca(p.id);`); const S = gg('S');
+  const r = (function () { const bot = bots[name]; const cc = makeEngine(); const gg = (x) => vm.runInContext(x, cc); gg(`newGame('sandbox','bot',0,'eletronicos'); S.seedStr='sim:${seed}'; S.rng=hash(S.seedStr);S.rngW=hash(S.seedStr+':mundo'); queue=[]; for(const p of PRODUCTS) if(p.anu) doLicenca(p.id);`); const S = gg('S');
     const api = { S, c: cc, g: gg, seg: 'eletronicos', main: 'fone', P: (id) => gg('PRODUCTS').find((p) => p.id === id), SUP: (id) => gg('SUPPLIERS').find((s) => s.id === id), MODAIS: gg('MODAIS'), SEASON: gg('SEASON'), RADAR: gg('RADAR'), WAREHOUSES: gg('WAREHOUSES'), marketPrice: (pid) => gg('marketPrice')(S, pid),
       buy(pid, sid, qty, modal, lock, seguro, neg) { gg('ui').buy = { pid, sid, qty, modal, lock, seguro }; const pv = gg('buyPreview')(); if (pv.err) return pv.err; const st = S.stock[pid]; if (st.ncm === null) { const p = api.P(pid); const o = neg === 'bad' ? p.ncm.find((n) => !n.ok) : p.ncm.find((n) => n.ok); st.ncm = o.c; st.ncmOk = o.ok; } const o = api.SUP(sid).opts.find((x) => x.k === neg); gg('finishBuy')(pv, neg, o, false); return null; },
       close(a) { gg('closeMonth')(); const q = gg('queue'); for (const m of q) for (const b of m.buttons || []) if (b.label === 'Aceitar' && a && b.onClick) b.onClick(); q.length = 0; },
