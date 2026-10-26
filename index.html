@@ -19,7 +19,7 @@
 img{max-width:100%} [hidden]{display:none!important}
 </style>
 <style>
-/* Layout: painel de operação à esquerda (abas por área da importadora), mentora Mia + diário à direita; stack no celular. */
+/* Layout: painel de operação à esquerda (salas do escritório), diário da empresa à direita; stack no celular. */
 :root{
   --bg:#F3F6F9; --surface:#FFFFFF; --fg:#1A2B4A; --muted:#5B6B82; --line:#D9E1EA;
   --brand:#00B386; --brand-ink:#0A7B5F; --soft:#E8F8F3; --navy:#1A2B4A; --navy-fg:#FFFFFF;
@@ -120,6 +120,7 @@ td.n,th.n{text-align:right;white-space:nowrap}
 .modal h2{margin-bottom:8px}
 .modal .body{display:flex;flex-direction:column;gap:10px}
 .mia-note{display:flex;gap:10px;background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.92rem;margin-top:6px}
+.note{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.92rem;margin-top:6px}
 .mia-note .av{width:32px;height:32px;border-radius:8px;background:var(--surface);display:grid;place-items:center;flex:none}
 .opt{display:block;width:100%;text-align:left;padding:10px 12px;margin-top:6px}
 .opt:hover{border-color:var(--brand)}
@@ -276,6 +277,13 @@ const ANALISTAS=[null,
  {lv:2,name:'Analista de Comex pleno',short:'analista pleno',fee:1200,disc:0.06,freight:0.10,desc:'Cota com vários agentes de carga e negocia prazo: 6% a menos no preço e 10% no frete.'},
  {lv:3,name:'Analista de Comex sênior',short:'analista sênior',fee:2000,disc:0.09,freight:0.15,desc:'Fala a língua do fornecedor: toda negociação fecha no melhor desconto, sem o minigame, mais 9% a menos no preço e 15% no frete.'},
 ];
+// Consultoria de Comex: não dá bônus; abre a sala Consultoria com o plano do mês (compras, preços, marketing, anuências) e um botão Aplicar. Pode errar: quanto mais avançada, menos.
+const CONSULTORIAS=[null,
+ {lv:1,nivel:'Iniciante',name:'Primeiro Embarque Consultoria',who:'Tiago Ramos',short:'consultoria iniciante',fee:800,err:0.30,desc:'Tiago abriu a própria importadora há três anos e hoje orienta quem está começando. Acerta 70% das recomendações.'},
+ {lv:2,nivel:'Intermediária',name:'Porto & Cia Consultoria',who:'Renata Lima',short:'consultoria intermediária',fee:1800,err:0.15,desc:'Renata foi analista de trading por dez anos e cuida de uma carteira de PMEs importadoras. Acerta 85% das recomendações.'},
+ {lv:3,nivel:'Avançada',name:'Horizonte Global Consultoria',who:'Marcos Veiga',short:'consultoria avançada',fee:3500,err:0.05,desc:'Marcos é despachante aduaneiro e ex-gerente de Comex de indústria. Acerta 95% das recomendações.'},
+];
+const conLv=s=>(s.consult&&s.consult.lv)||0;const conFee=s=>conLv(s)?CONSULTORIAS[conLv(s)].fee:0;
 const anaLv=s=>s.up.analista||(s.up.buyer?3:0);const anaFee=s=>anaLv(s)?ANALISTAS[anaLv(s)].fee:0;const anaDisc=s=>anaLv(s)?ANALISTAS[anaLv(s)].disc:0;const anaFreight=s=>anaLv(s)?ANALISTAS[anaLv(s)].freight:0;
 const START_CASH=150000;
 const cfAdd=(k,v)=>{const s=S;s.cf||(s.cf={});s.cf[k]=(s.cf[k]||0)+v;};
@@ -501,7 +509,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
   }
   s.ships=s.ships.filter(x=>!x.done);
   // 4. custos fixos e financeiros
-  let fixed=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  let fixed=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+conFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const over=Math.max(0,stockM3(s)-whCap(s));const pl=Math.round(over*THREEPL);fixed+=pl;
   const interest=Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE);
   let nfe=0;if(sysLv(s)===1&&arrivalsN>0&&rand()<0.35){nfe=Math.max(1500,Math.round(landedThisMonth*0.03));log(s,`Erro na NF-e de importação: CFOP e base de ICMS divergentes. ${fmt(nfe)} de retrabalho e multa.`);}
@@ -537,6 +545,8 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
   // modais: um único fechamento com tudo; só decisão (evento com escolha) e fim de jogo abrem janela própria, depois
   const avisos=[],dicas=[];
   for(const n of notices){avisos.push(n.aviso);if(n.dica)dicas.push(n.dica);}
+  if(s.consult&&s.consult.applied===s.turn-1&&s.consult.errDesc){const C=CONSULTORIAS[conLv(s)];avisos.push({icon:'alerta',cls:'warn',title:`${C.who} errou a mão no plano de ${monthName(s.turn-1)}`,text:s.consult.errDesc});}
+  if(s.consult){s.consult.errDesc=null;}
   collectArrivals(report,avisos,dicas);
   if(report.marcos){avisos.push({icon:'coin',cls:'good',title:report.marcos.length>1?'Marcos alcançados':'Marco alcançado',text:`<span class="selos">${report.marcos.map(mc=>`<span class="selo">${mc.name}</span>`).join('')}</span> Cada marco vale ${fmt(MARCO_XP)} de experiência.`});}
   if(report.levelUp){const L=report.levelUp;avisos.push({icon:'office',cls:'good',title:`Nível ${L.n}: ${L.name}`,text:`Vantagem desbloqueada: ${L.perk}${nextLevel(s)?` Próximo: ${nextLevel(s).name}, com ${fmt(nextLevel(s).xp)} de experiência.`:' Nível máximo.'}`});}
@@ -597,7 +607,7 @@ function queueReport(r,avisos,dicas){const m=r.m;const cls=v=>v<0?'bad':'good';a
    <tr style="font-weight:700"><td>Resultado do mês</td><td class="n ${cls(m.result)}">${fmt(m.result)}</td></tr>${r.autoGiro?`<tr><td class="warn">Caixa ficou negativo: o banco cobriu ${fmt(r.autoGiro)} com capital de giro automático</td><td class="n warn">dívida ${fmt(S.loans.giro)}</td></tr>`:''}</table></div>
    ${m.cashEnd<0?mia('Caixa negativo além do limite de crédito. Mais um mês assim e o banco encerra a conta. Venda estoque, antecipe recebíveis ou segure as compras.'):r.autoGiro?mia('O banco segurou a conta com capital de giro automático, mas cobra juros todo mês. Quite assim que as vendas entrarem: dívida parada come a margem.'):r.brandQuality?mia('Reputação custa mais caro que inspeção: R$ 1.800 por embarque evitam o lote ruim e as avaliações que ele deixa. A confiança sobe 10 pontos por mês em que você atende bem.'):r.ratio>0.2?mia('Você gerou demanda e não tinha estoque. Cliente que não encontra o produto demora a voltar: a confiança só se recupera com meses de demanda atendida. Marketing só vale com compras planejadas.'):m.over>0?mia(`Seu estoque passou ${m.over.toFixed(1)} m³ da capacidade e foi pro 3PL. Compare com o aluguel de um galpão na aba Investir.`):r.sales.length===0?mia('Nada vendido este mês. Enquanto a carga não chega, o custo fixo corre.'):mia('Receita só vira lucro depois de pagar comissão, custo da mercadoria e fixos. Acompanhe a margem, não o faturamento.')}
    ${avisos.length?`<h3 style="margin-top:12px">Avisos</h3><ul class="avisos">${avisos.map(a=>`<li class="lv-${a.cls||'info'}">${a.icon?spr(a.icon,2):''}<div><b>${a.title}</b><div class="small">${a.text}</div></div></li>`).join('')}</ul>`:''}
-   ${dicas.length?`<details class="dicas"><summary>Dicas da Mia (${dicas.length})</summary><ul>${dicas.map(d=>`<li>${d}</li>`).join('')}</ul></details>`:''}`,buttons:[{label:'Próximo mês',cls:'primary'}]});
+`,buttons:[{label:'Próximo mês',cls:'primary'}]});
 }
 function queueEvent(avisos,dicas){const s=S;
   const gate=randW(),pick=randW(); // os dois sorteios do mundo acontecem todo mês, para todo mundo, antes de qualquer desvio
@@ -609,7 +619,7 @@ function queueEvent(avisos,dicas){const s=S;
   for(const e of pool){r-=e.w;if(r<=0){ev=e;break;}}
   if(ev.cond&&!ev.cond(s))return null;
   if(ev.id==='aliquota'&&hasMaino(s)){s.flags.aliqPending=s.turn+1;s.flags.aliqDone=true;
-    avisos.push({icon:'mia',cls:'warn',title:'Mia avisa: alíquota vai mudar',text:'A Receita publicou aumento de 4 pontos no II dos seus produtos. Entra em vigor <b>no mês que vem</b> e dura 3 meses.'});dicas.push('Pedido que chegar este mês ainda paga a alíquota atual. Se for comprar, compre agora via aéreo ou courier.');return null;}
+    avisos.push({icon:'officer',cls:'warn',title:'Aviso antecipado (Mainô ERP): alíquota vai mudar',text:'A Receita publicou aumento de 4 pontos no II dos seus produtos. Entra em vigor <b>no mês que vem</b> e dura 3 meses.'});dicas.push('Pedido que chegar este mês ainda paga a alíquota atual. Se for comprar, compre agora via aéreo ou courier.');return null;}
   const d=ev.setup?ev.setup(s):null;const text=ev.textFn?ev.textFn(d):ev.text;
   const EVICON={dolar_up:'dolar',dolar_down:'dolar',greve:'officer',navio:'ship',pedido:'truck',concorrente:'alerta',porto:'ship',aliquota:'officer',calote:'coin',fiscalizacao:'officer',bf:'alerta',fornecedor:'box',avaria:'box',demurrage:'container'};
   if(ev.choice){return {icon:EVICON[ev.id],title:ev.title,html:`<p>${text}</p>${mia(ev.mia)}`,buttons:[{label:'Recusar'},{label:'Aceitar',cls:'primary',onClick:()=>{ev.accept(s,d);renderGame();}}]};}
@@ -636,7 +646,7 @@ function queueGameOver(broke){const s=S;s.over=true;const pat=patrimonio(s);cons
    <div class="row" style="justify-content:center;margin-top:8px"><button class="primary big" id="shareWa">Compartilhar no WhatsApp</button></div>
    <div class="row" style="justify-content:center;margin-top:6px"><button id="saveImg">Salvar imagem</button><button id="copyImg">Copiar imagem</button><button id="copyTxt">Copiar texto</button></div>
    <p id="shareMsg" class="small muted" style="text-align:center;margin-top:6px">No celular, você também pode segurar a imagem para salvar ou enviar.</p></div>
-   <div class="mia-note"><div class="av">${spr('mia',2)}</div><div>Na sua partida, cada chegada teve risco de erro de NF-e e você só soube da alíquota ao registrar a DUIMP. Na vida real, a Mainô gera a NF-e de importação a partir da DUIMP ou do XML da DI em 2 minutos e avisa antes de a norma mudar.<br><a class="cta" style="margin-top:8px" href="https://www.maino.com.br" target="_blank" rel="noopener">Quero importar de verdade</a></div></div>
+   <div class="mia-note"><div class="av">${spr('office',2)}</div><div>Na sua partida, cada chegada teve risco de erro de NF-e e você só soube da alíquota ao registrar a DUIMP. Na vida real, a Mainô gera a NF-e de importação a partir da DUIMP ou do XML da DI em 2 minutos e avisa antes de a norma mudar.<br><a class="cta" style="margin-top:8px" href="https://www.maino.com.br" target="_blank" rel="noopener">Quero importar de verdade</a></div></div>
    `,
    buttons:[{label:'Jogar de novo',cls:'primary',onClick:()=>{S=null;showStart();}}],
    onOpen:()=>{setupShare(pat,rev,sl,broke,txt);}});
@@ -723,7 +733,7 @@ function finishBuy(pv,k,o,auto,rolls){const s=S,b=ui.buy,sup=SUP(b.sid),p=P(b.pi
   log(s,`Pedido: ${sh.qty} ${p.name} de ${sup.name}, ${fmtU(sh.fobUSD)}${disc<1?' (com desconto)':disc>1?' (sem desconto, preço subiu)':''}. Sinal ${fmt(sinal)}. ${MODAIS[b.modal].name.split(' (')[0]}, chega no mês ${sh.eta}.`);
   renderGame();
   if(s.replaying)return;
-  openModal({icon:'container',title:upset?`${sup.name} ainda está chateado: 5% a mais`:k==='good'?`Fechou com desconto de ${Math.round((1-disc)*100)}%`:k==='bad'?'Fechou, mas pagou 3% a mais':r.partner?'Fechou com 2% de parceiro':'Fechou no preço de lista',html:`${auto==='buyer'?'<p>Seu analista de Comex sênior conduziu a negociação.</p>':''}${anaLv(s)?`<p class="small muted">${ANALISTAS[anaLv(s)].name}: ${Math.round(anaDisc(s)*100)}% a menos no preço e ${Math.round(anaFreight(s)*100)}% no frete já aplicados.</p>`:''}${relMsg}<p>${sh.qty} <b>${p.name}</b> por ${fmtU(sh.fobUSD)}. Sinal de ${Math.round(sup.deposit*100)}% pago agora: <b>${fmt(sinal)}</b>. Saldo e tributos na chegada, prevista para <b>${monthName(sh.eta)}</b>${sh.eta===s.turn?' (ainda este mês)':''}.</p>${mia(upset?'Promessa quebrada tem preço. Ele vai voltar ao normal com o tempo, mas o desconto de volume só volta com um novo acordo cumprido.':o.why)}`,buttons:[{label:'Ok',cls:'primary'}]});
+  if(auto!=='consultor')openModal({icon:'container',title:upset?`${sup.name} ainda está chateado: 5% a mais`:k==='good'?`Fechou com desconto de ${Math.round((1-disc)*100)}%`:k==='bad'?'Fechou, mas pagou 3% a mais':r.partner?'Fechou com 2% de parceiro':'Fechou no preço de lista',html:`${auto==='buyer'?'<p>Seu analista de Comex sênior conduziu a negociação.</p>':''}${anaLv(s)?`<p class="small muted">${ANALISTAS[anaLv(s)].name}: ${Math.round(anaDisc(s)*100)}% a menos no preço e ${Math.round(anaFreight(s)*100)}% no frete já aplicados.</p>`:''}${relMsg}<p>${sh.qty} <b>${p.name}</b> por ${fmtU(sh.fobUSD)}. Sinal de ${Math.round(sup.deposit*100)}% pago agora: <b>${fmt(sinal)}</b>. Saldo e tributos na chegada, prevista para <b>${monthName(sh.eta)}</b>${sh.eta===s.turn?' (ainda este mês)':''}.</p>${mia(upset?'Promessa quebrada tem preço. Ele vai voltar ao normal com o tempo, mas o desconto de volume só volta com um novo acordo cumprido.':o.why)}`,buttons:[{label:'Ok',cls:'primary'}]});
 }
 
 /* ===================== DECISÕES DO MÊS: registro, snapshot e desfazer ===================== */
@@ -740,6 +750,7 @@ function replayCmd(c){const s=S;
     case 'sistema':if(c.lv<=sysLv(s))return false;doSistema(c.lv);return true;
     case 'buyer':if(anaLv(s)>=3)return false;doAnalista(3);return true;
     case 'analista':if(c.lv<=anaLv(s))return false;doAnalista(c.lv);return true;
+    case 'consultoria':if(c.lv===conLv(s))return false;doConsultoria(c.lv);return true;
     case 'radar':{const nx=RADAR[s.radar.level+1];if(!nx||s.imports<nx.req||s.cash<nx.cost)return false;doRadar();return true;}
     case 'filial':if((s.filial&&s.filial.status!=='none')||s.cash<FILIAL.setup)return false;doFilial();return true;
     case 'loan':if(c.amt<0&&s.loans[c.kind]<=0)return false;doLoan(c.kind,c.amt);return true;
@@ -752,7 +763,7 @@ function undoCmd(i){const s=S;if(!s.snap)return;const keep=(s.cmds||[]).filter((
 function revisarMes(dropped,removed){const s=S;const cmds=s.cmds||[];const set=captureSettings(s);
   const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
-  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+conFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
   openModal({icon:'coin',title:`Revisar e rodar ${monthName(s.turn)}`,html:`
    ${removed?`<p class="good small">Desfeito: ${removed.desc}.${dropped&&dropped.length?` <span class="warn">Caíram junto por depender dela: ${dropped.map(d=>d.desc).join('; ')}.</span>`:''}</p>`:''}
@@ -791,27 +802,8 @@ function antecipar(){const tot=S.recv.reduce((a,r)=>a+r.amount,0);if(!tot)return
 function doAntecipar(){const tot=S.recv.reduce((a,r)=>a+r.amount,0);if(!tot)return;ensureSnap();pushCmd({t:'antecipar',desc:`Antecipou ${fmt(tot)} em recebíveis (FIDC)`,custo:Math.round(tot*0.05)});const net=Math.round(tot*0.95);S.cash+=net;cfAdd('antecip',net);S.m.other+=tot-net;S.recv=[];log(S,`Antecipou ${fmt(tot)} em recebíveis via FIDC. Recebeu ${fmt(net)}.`);renderGame();}
 
 /* ===================== MIA ===================== */
-function mia(t){return `<div class="mia-note"><div class="av">${spr('mia',2)}</div><div>${t}</div></div>`;}
+function mia(t){return t?`<div class="note">${t}</div>`:'';} // nota de contexto, sem personagem
 function coverage(s,pid){const st=stk(s,pid);const d=demandFor(s,pid,st.price,st.channel,1);const dem=Math.round(d.mp)+Math.round(d.b2b);const transit=s.ships.filter(x=>x.pid===pid);const next=transit.length?Math.min(...transit.map(x=>x.eta)):null;return{dem,months:dem>0?st.qty/dem:(st.qty>0?99:0),next,transitQty:transit.reduce((a,x)=>a+x.qty,0)};}
-function miaTip(s){const m=(s.turn-1)%12;
-  {const risco=PRODUCTS.map(p=>({p,c:coverage(s,p.id)})).filter(x=>stk(s,x.p.id).qty>0&&x.c.months<2.2&&(x.c.next==null||x.c.next>s.turn+Math.ceil(x.c.months)));if(risco.length){const x=risco[0];return `${x.p.name}: o estoque cobre ${x.c.months<1?'menos de 1 mês':Math.floor(x.c.months)+' mês(es)'} e ${x.c.next?'o próximo embarque só chega em '+monthName(x.c.next):'não há embarque a caminho'}. Marítimo leva 2 meses: peça agora ou vai faltar.`;}}
-  const semLic=PRODUCTS.filter(p=>p.anu&&lic(s,p.id).status==='none');if(semLic.length===PRODUCTS.filter(p=>p.anu).length&&semLic.length&&s.ships.length===0)return `Neste segmento ${semLic.length===PRODUCTS.length?'todo produto':semLic.map(p=>p.name).join(', ')} exige anuência antes do embarque. Solicite na sala de compras: leva ${Math.max(...semLic.map(p=>p.anu.lead))} mês(es).`;
-  const due=SUPPLIERS.find(x=>{const r=rel(s,x.id);return r.promise&&r.promise.deadline===s.turn;});if(due)return `Você prometeu recorrência a ${due.name} e o prazo do próximo pedido é este mês. Um pedido pequeno mantém o acordo e o desconto.`;
-  if(s.turn===1&&s.ships.length===0)return 'Primeiro mês: compre. Um LCL de 200 a 400 unidades leva 2 meses pra chegar. Enquanto isso, o custo fixo corre.';
-  if(brand(s)<0.8)return `Confiança da marca em ${Math.round(brand(s)*100)}%: clientes saíram sem comprar. Garanta estoque antes de gastar em marketing; ela sobe 10 pontos por mês atendido.`;
-  if((s.mkt||0)>0){const tot=PRODUCTS.reduce((a,p)=>{const st=stk(s,p.id);if(!(st.avg>0||st.qty>0))return a;const d=demandFor(s,p.id,st.price,st.channel,1);return a+Math.round(d.mp)+Math.round(d.b2b);},0);const est=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);if(tot>est*1.2)return `Você está gastando ${fmt(s.mkt)} em marketing com estoque para ${est} unidades e demanda prevista de ${tot}. Compre antes de anunciar.`;}
-  if(s.ships.some(x=>!x.insp&&riskNoInsp(SUP(x.sid))>=0.1))return 'Você tem embarque sem inspeção com fornecedor de confiabilidade baixa. Da próxima vez, R$ 1.800 de inspeção protegem um lote de dezenas de milhares.';
-  if(s.cash<0)return 'Caixa negativo além do limite de crédito. Mais um mês assim e acabou. Venda estoque, antecipe recebíveis ou segure compras.';
-  if(s.ships.length&&stockM3(s)+s.ships.reduce((a,x)=>a+x.qty*P(x.pid).m3,0)>whCap(s))return 'O que está chegando não cabe no seu espaço. Vai pro 3PL a R$ 150/m³. Compare com o aluguel de galpão em Investir.';
-  if(s.dHist.length>=3&&s.dollar>s.dHist[s.dHist.length-3]*1.04)return 'Dólar em alta há dois meses. Travar o câmbio custa 1,2% sobre o câmbio pronto e tira o risco do saldo que vence na chegada.';
-  if(m>=7&&m<=9)return 'Novembro e dezembro concentram metade das vendas do ano. Pedido marítimo agora chega a tempo da Black Friday.';
-  if(m===10||m===11)return 'Pico de demanda. Preço acima do mercado ainda vende. Não deixe estoque pra janeiro, que é fraco.';
-  if(sysLv(s)===0&&(PRODUCTS.some(p=>stk(s,p.id).qty>0)||s.ships.length))return 'Você vai vender sem emitir nota. Marketplace fechado, metade dos clientes B2B some e 20% de chance por mês de a fiscalização parar a operação. Contrate ao menos um sistema generalista na Diretoria.';
-  if(sysLv(s)===1&&s.imports>=2)return 'Você já teve chegadas com ERP generalista: cada uma tem 35% de chance de erro na NF-e de importação. O Mainô Operação elimina isso por R$ 990/mês.';
-  if(s.radar.used>RADAR[s.radar.level].limit*0.7&&s.radar.level<2)return 'Seu Radar está perto do limite do semestre. Subir de nível em Investir libera volume.';
-  if(s.cash>120000&&s.ships.length===0)return 'Dinheiro parado não importa nada. Capital em caixa sem estoque é custo de oportunidade.';
-  return 'Faturamento não é lucro. Olhe a margem depois de comissão, tributos e fixos no fechamento de cada mês.';
-}
 
 /* ===================== PIXEL ART (sprites desenhados em canvas) ===================== */
 const PAL={k:'#1A2B4A',w:'#F3F6F9',g:'#00B386',G:'#0A7B5F',y:'#F2B53B',o:'#E07A2F',r:'#D14343',b:'#3B82F6',B:'#243F70',s:'#9FB0C6',S:'#5B6B82',t:'#F1C27D',h:'#5A3A1E',c:'#7DD3FC',C:'#2E8BC0',d:'#2D3748',n:'#C9D3E3',m:'#B8C4D6',e:'#D9A066'};
@@ -1235,6 +1227,7 @@ const ROOMS=[
  {id:'vendas',name:'Expedição e vendas',short:'Vendas',tint:'#FFF4D6',tintD:'#3A2E10'},
  {id:'investir',name:'Diretoria',short:'Diretoria',tint:'#F3E8FF',tintD:'#2B1F45'},
  {id:'financas',name:'Financeiro',short:'Financeiro',tint:'#E6FFFA',tintD:'#0F3A33'},
+ {id:'consultoria',name:'Consultoria',short:'Consultoria',tint:'#FFE8EE',tintD:'#3A1F2A'},
 ];
 const FURN={
  desk:['kkkkkkkkkkkkkkkk','keeeeeeeeeeeeeek','keeeeeeeeeeeeeek','k.kk........kk.k','k.kk........kk.k'],
@@ -1295,6 +1288,7 @@ function drawOffice(){const c=$('#office');if(!c)return;const x=c.getContext('2d
     if(r.id==='vendas'){drawRows(x,FURN.boxes,px+rw-56,98,3);drawRows(x,SPR.truck,px+8,26,2);}
     if(r.id==='investir'){drawRows(x,FURN.plant,px+10,100,3);drawRows(x,FURN.monitor,px+rw/2-13,38,sc);drawRows(x,FURN.plant,px+rw-36,100,3);}
     if(r.id==='financas'){drawRows(x,FURN.safe,px+rw-44,96,3);drawRows(x,FURN.cofre,px+12,30,3);drawRows(x,SPR.coin,px+16,110,2);}
+    if(r.id==='consultoria'){x.globalAlpha=(S&&conLv(S))?1:0.4;drawRows(x,FURN.chart,px+12,22,2);drawRows(x,FURN.monitor,px+rw/2-13,38,sc);drawRows(x,FURN.plant,px+rw-36,100,3);x.globalAlpha=1;}
   });
   // avatar
   const p=avatarPos();const a=myAvatar();const rows=avatarRows(a,p.frame);
@@ -1308,7 +1302,7 @@ function confirmar(o){openModal({icon:o.icon||'alerta',title:o.title,html:o.html
 function confirmClose(){const s=S;
   const vendas=PRODUCTS.map(p=>{const st=stk(s,p.id);if(!st.qty)return null;const d=demandFor(s,p.id,st.price,st.channel,1);const q=Math.min(st.qty,Math.round(d.mp)+Math.round(d.b2b));return q?`${q} ${p.name}`:null;}).filter(Boolean);
   const chegadas=s.ships.filter(x=>x.eta<=s.turn).map(x=>`${x.qty} ${P(x.pid).name} (${MODAIS[x.modal].name.split(' (')[0]})`);
-  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+conFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const sem=s.ships.length===0&&PRODUCTS.every(p=>stk(s,p.id).qty===0)&&s.turn<12;
   confirmar({icon:'coin',title:`Rodar o mês de ${monthName(s.turn)}?`,yes:'Rodar o mês',onYes:closeMonth,html:`
    <p><b>Vendas previstas:</b> ${vendas.length?vendas.join(', '):'nenhuma (sem estoque)'}.</p>
@@ -1346,13 +1340,12 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
     </div></div>
     <div class="timeline" aria-label="Linha do tempo: 12 rodadas, uma por mês"><span class="tl-cap">${s.over?'Fim de jogo':'Rodada '+s.turn+' de 12'}</span>${MONTHS.map((mo,i)=>{const t=i+1;const st=s.over||t<s.turn?'done':t===s.turn?'now':'';const just=statPrev&&(t===s.turn-1||t===s.turn)?' just':'';return `<span class="m ${st}${just}" title="${mo}: ${st==='done'?'rodado':st==='now'?'mês atual, tome as decisões e rode o mês':'ainda vem'}"><i></i>${mo}</span>`;}).join('')}</div></header>
   <div class="wrap"><div class="grid"><section>
-    <div class="base" style="flex-direction:column;align-items:stretch;gap:6px"><canvas id="base" width="720" height="180"></canvas><div class="cap">${s.ships.length} embarque(s) em trânsito · ${SYSTEMS[sysLv(s)].short}${anaLv(s)?' · '+ANALISTAS[anaLv(s)].short:''}</div></div>
+    <div class="base" style="flex-direction:column;align-items:stretch;gap:6px"><canvas id="base" width="720" height="180"></canvas><div class="cap">${s.ships.length} embarque(s) em trânsito · ${SYSTEMS[sysLv(s)].short}${anaLv(s)?' · '+ANALISTAS[anaLv(s)].short:''}${conLv(s)?' · '+CONSULTORIAS[conLv(s)].short:''}</div></div>
     <div class="panel office-wrap"><canvas id="office" width="720" height="216" aria-label="Planta do escritório: clique numa sala"></canvas><nav class="rooms" aria-label="Salas">${ROOMS.map(r=>`<button data-room="${r.id}" aria-current="${(walk?walk.target:ui.room)===r.id}">${r.name}</button>`).join('')}</nav></div>
     <div id="tab"></div>
     <div class="actions"><button class="primary big" id="close" ${s.over?'disabled':''}>Rodar o mês de ${monthName(s.turn)} ▸</button></div>
   </section>
-  <aside><div class="mia"><div class="who"><div class="av">${spr('mia',3)}</div><div><b>Mia</b><br><span class="small muted">mentora de importação</span></div></div><div class="tip">${miaTip(s)}</div>
-    <div class="log"><div class="t" style="border:0">Diário da empresa</div>${s.log.slice(0,12).map(l=>`<div><span class="t">${monthName(l.turn)}</span> ${l.t}</div>`).join('')}</div></div></aside>
+  <aside><div class="mia"><div class="log"><div class="t" style="border:0">Diário da empresa</div>${s.log.slice(0,12).map(l=>`<div><span class="t">${monthName(l.turn)}</span> ${l.t}</div>`).join('')}</div></div></aside>
   </div>${FOOTER}</div>`;
   document.querySelectorAll('.rooms button').forEach(b=>b.onclick=()=>goRoom(b.dataset.room));
   $('#office').onclick=officeClick;
@@ -1361,12 +1354,12 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
   drawOffice();drawBase();
   if(statPrev){const prev=statPrev;statPrev=null;animateStats(prev);}
 }
-const PANELS={comprar:renderComprar,vendas:renderVendas,investir:renderInvestir,financas:renderFinancas};
+const PANELS={comprar:renderComprar,vendas:renderVendas,investir:renderInvestir,financas:renderFinancas,consultoria:renderConsultoria};
 function renderPanel(){if(!PANELS[ui.room])ui.room='comprar';PANELS[ui.room]();highlightRoom();}
 // A antiga sala "Inteligência de mercado" foi distribuída: preço de venda e demanda do produto na sala de compras, dólar no Financeiro, tributos atrás de uma seta na compra.
 function demandCells(s,p){const m=(s.turn-1)%12;return [0,1,2].map(i=>{const base=p.base*SEASON[(m+i)%12];const mo=MONTHS[(m+i)%12];if(sysLv(s)>=3){const dm=s.demandMod[p.id];const f=(i===0&&dm&&dm.until>=s.turn)?dm.f:1;return mo+' '+Math.round(base*f/10)*10;}return mo+' ~'+Math.round(base/100)*100;});}
 function lastMonthPanel(s){const last=s.hist[s.hist.length-1];if(!last)return '';
-  return `<div class="panel" style="border-color:var(--brand)"><h2>O que aconteceu em ${last.month}</h2>${explainMonth(last)}${mia(last.m.unmet>0&&last.ratio>0.2?'Demanda maior que o estoque. Antes de subir marketing ou baixar preço, garanta a próxima chegada.':last.sales&&last.sales.some(x=>x.left>0&&x.f&&x.price/x.f.market>1.05)?'Sobrou estoque com preço acima do mercado. Baixar o preço aumenta a demanda mais que proporcionalmente, mas come margem: teste 5% por vez.':'Compare a procura com o que você comprou: é esse equilíbrio que o jogo premia.')}</div>`;}
+  return `<div class="panel" style="border-color:var(--brand)"><h2>O que aconteceu em ${last.month}</h2>${explainMonth(last)}</div>`;}
 function tributosHTML(s){return `<details class="casc"><summary>Tributos vigentes por NCM</summary><div class="tbl"><table><tr><th>Produto</th><th>NCM</th><th class="n">II</th><th class="n">IPI</th></tr>${PRODUCTS.map(p=>`<tr><td>${p.name}</td><td>${p.ncm.find(n=>n.ok).c}</td><td class="n">${pct(p.ii+s.tax.iiExtra)}</td><td class="n">${pct(p.ipi)}</td></tr>`).join('')}</table></div><p class="small muted" style="margin-top:6px">PIS/COFINS-importação 2,1% + 9,65% · ICMS 18% (SP, por dentro) · AFRMM 8% do frete marítimo de longo curso · Taxa Siscomex R$ 115,67 por DUIMP + R$ 38,56 por adição.${s.flags.aliqUntil?` <span class="warn">II elevado em 4 pontos até ${monthName(s.flags.aliqUntil)}.</span>`:''}</p></details>`;}
 function drawDollar(s){const c=$('#dchart');if(!c)return;const x=c.getContext('2d');const h=s.dHist;const mn=Math.min(...h)*0.97,mx=Math.max(...h)*1.03;const fg=getComputedStyle(document.body).color;
   x.clearRect(0,0,400,120);x.strokeStyle='#00B386';x.lineWidth=2.5;x.beginPath();h.forEach((v,i)=>{const px=30+i*(350/11),py=105-(v-mn)/(mx-mn)*90;i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();
@@ -1413,28 +1406,104 @@ function renderVendas(){const s=S;
      <td><input type="number" min="1" step="1" value="${st.price}" data-price="${p.id}" style="width:5.2em"></td>
      <td><select data-ch="${p.id}"><option value="ambos" ${st.channel==='ambos'?'selected':''}>Ambos</option><option value="marketplace" ${st.channel==='marketplace'?'selected':''} ${sysLv(s)===0?'disabled':''}>Marketplace${sysLv(s)===0?' (exige sistema)':''}</option><option value="b2b" ${st.channel==='b2b'?'selected':''}>B2B</option></select></td>
      <td class="n">${st.qty?`${prev} un.<br><span class="small ${mg!==null&&mg<0?'bad':'muted'}">${sysLv(s)>=3&&mg!==null?'margem '+mg+'%':''}</span>`:'<span class="muted">sem estoque</span>'}</td>${(()=>{const c=coverage(s,p.id);if(!st.qty&&!c.transitQty)return '<td class="muted small">–</td>';const falta=c.next==null?(st.qty>0&&c.months<2.2):(c.next>s.turn+Math.ceil(c.months)&&st.qty>0);return `<td class="small ${falta?'bad':c.months>=4?'warn':'good'}">${st.qty?(c.months>=12?'12+':c.months.toFixed(1))+' mês(es)':'0'}${c.transitQty?`<br><span class="muted">+${c.transitQty} em ${monthName(c.next)}</span>`:''}${falta?'<br>vai faltar':c.months>=4&&st.qty?'<br>estoque alto':''}</td>`;})()}</tr>`;}).join('')}</table></div>
-   ${sysLv(s)>=3?mia('Margem é preço de venda líquido de comissão sobre o custo nacionalizado, não sobre o FOB. Se estiver negativa, você está pagando pra vender.'):mia('Sem o Mainô Plano Gestão você não vê a margem por produto: custo nacionalizado e preço de venda ficam em telas separadas. Contrate na Diretoria para planejar as compras pela margem.')}</div>
+   </div>
    <div class="panel"><h3>Projeção de estoque mês a mês ${tip('Quanto vai sobrar de cada produto no fim de cada mês se você não comprar mais nada: estoque de hoje menos a venda prevista, mais o que já está a caminho. Use junto com o lead time: marítimo chega em 2 meses, aéreo em 1.')}</h3>${stockProjHTML(s)}</div>
    <div class="panel"><h3>Marketing e confiança da marca ${tip('<b>Marketing</b> aumenta a demanda de todos os produtos com retorno decrescente: R$ 6 mil dão +50%, R$ 18 mil dão +75%, teto de +100%. Cobrado no fechamento.<br><b>Confiança da marca</b> multiplica a demanda. Cai até 10 pontos por mês quando mais de 20% da demanda fica sem estoque (piso de 60%), 8 pontos quando um lote chega com defeito e 4 quando chega fora da especificação; sobe 10 pontos por mês em que você atende mais de 90%. Marketing sem estoque destrói confiança.')}</h3>
    <div class="row" style="margin-top:8px;align-items:flex-start"><div style="flex:1;min-width:240px"><label class="field">Orçamento de marketing por mês<input id="mkt" type="range" min="0" max="${MKT_MAX}" step="1000" value="${s.mkt||0}" style="width:100%"></label>
    <p class="small" style="margin-top:4px"><b>${fmt(s.mkt||0)}/mês</b> · demanda <b>+${Math.round(mktLift(s.mkt||0)*100)}%</b></p></div>
    <div style="flex:1;min-width:220px"><div class="small muted" style="text-transform:uppercase;letter-spacing:.06em">Confiança da marca</div><div class="bar ${brand(s)<0.8?'hot':''}" style="margin-top:6px"><i style="width:${Math.round(brand(s)*100)}%"></i></div><p class="small" style="margin-top:4px"><b>${Math.round(brand(s)*100)}%</b> da demanda potencial${brand(s)<1?' · <span class="warn">clientes decepcionados</span>':''}</p></div></div>
    ${(()=>{const tot=PRODUCTS.reduce((a,p)=>{const st=stk(s,p.id);if(!(st.avg>0||st.qty>0))return a;const d=demandFor(s,p.id,st.price,st.channel,1);return a+Math.round(d.mp)+Math.round(d.b2b);},0);const est=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);return tot>est*1.15&&tot>0?`<p class="warn small" style="margin-top:6px">Atenção: a demanda prevista para este mês é de ${tot} unidades e você tem ${est} em estoque. Cada cliente que não encontra o produto reduz a confiança da marca.</p>`:'';})()}
-   ${mia('Marketing cria demanda; só o estoque entrega. Se você anuncia e não tem produto, perde a venda e a confiança: a demanda cai e demora meses pra voltar. Regule o orçamento pelo que vai ter em estoque, não pelo que gostaria de vender.')}</div>
+   </div>
    ${s.recv.length?`<div class="panel"><h3>A receber (B2B)</h3><div class="tbl"><table>${s.recv.map(r=>`<tr><td>${r.p}</td><td class="n">${fmt(r.amount)}</td><td>vence em ${monthName(r.due)}</td></tr>`).join('')}</table></div></div>`:''}`;
   const mk=$('#mkt');if(mk){mk.oninput=()=>{s.mkt=+mk.value;};mk.onchange=()=>{s.mkt=+mk.value;log(s,`Marketing ajustado para ${fmt(s.mkt)}/mês.`);renderGame();};}
   document.querySelectorAll('[data-price]').forEach(e=>e.onchange=()=>{const p=P(e.dataset.price);const v=Math.max(1,Math.round(+e.value)||1);stk(s,e.dataset.price).price=v;log(s,`Preço de ${p.name} ajustado para ${fmt(v)}.`);renderGame();});
   document.querySelectorAll('[data-ch]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.ch).channel=e.value;renderGame();});
 }
+
+/* ===================== CONSULTORIA ===================== */
+function contratarConsultoria(lv){const C=CONSULTORIAS[lv];if(!C||lv===conLv(S))return;const cur=conLv(S);confirmar({icon:'sup'+lv,title:`${cur?'Trocar para':'Contratar'} ${C.name} por ${fmt(C.fee)}/mês?`,yes:cur?'Trocar':'Contratar',onYes:()=>doConsultoria(lv),html:`<p><b>${C.who}</b>, consultoria ${C.nivel.toLowerCase()}. ${C.desc}</p><p class="small muted">Abre a sala Consultoria com o plano de cada mês e o botão Aplicar. Não dá bônus; custo fixo mensal até o fim do ano${cur?`, no lugar dos ${fmt(CONSULTORIAS[cur].fee)} atuais`:''}.</p>`});}
+function doConsultoria(lv){const C=CONSULTORIAS[lv];ensureSnap();pushCmd({t:'consultoria',lv,desc:`${conLv(S)?'Trocou para':'Contratou'} ${C.name} (${fmt(C.fee)}/mês)`,custo:0});S.consult={lv,errTurn:null,err:null,errDesc:null,applied:null};log(S,`${C.name} contratada: ${C.who} monta o plano do mês na sala Consultoria.`);renderGame();}
+// Plano do mês: o que um bom gestor faria com a informação da tela. Mesma regra para os três níveis; o que muda é a chance de errar.
+function buildPlan(s){const C=CONSULTORIAS[conLv(s)];if(!C)return null;
+  if(s.consult.errTurn!==s.turn){s.consult.errTurn=s.turn;s.consult.err=rand()<C.err?['qty','price','modal','mkt','ncm'][randIdx(5)]:null;}
+  const err=s.consult.applied===s.turn?null:s.consult.err;const m=(s.turn-1)%12;const plan={buys:[],prices:{},mkt:0,licenses:[],notes:[],err,errDesc:null,sinais:0};
+  const chan=sysLv(s)>=1?'ambos':'b2b';
+  for(const p of PRODUCTS){const st=stk(s,p.id);const mk=marketPrice(s,p.id);const cov=coverage(s,p.id);let price=mk,why='preço de mercado';
+    if(st.qty>0&&cov.months<1&&(cov.next==null||cov.next>s.turn+1)){price=Math.round(mk*1.05);why='vai faltar antes da próxima chegada: segura 5% acima';}
+    else if(st.qty>0&&cov.months>3){price=Math.round(mk*0.95);why='estoque para mais de 3 meses: 5% abaixo para girar';}
+    if(err==='price'){price=Math.round(mk*1.25);why='procura aquecida: dá para cobrar 25% acima do mercado';}
+    plan.prices[p.id]={price,channel:chan,why};}
+  if(err==='price')plan.errDesc='mandou vender tudo 25% acima do mercado e a procura despencou';
+  const covs=PRODUCTS.filter(p=>stk(s,p.id).qty>0).map(p=>coverage(s,p.id));
+  plan.mkt=covs.length&&Math.min(...covs.map(c=>c.months))>=1.5&&s.cash>40000?MKT_K:0;plan.mktWhy=plan.mkt?'estoque cobre mais de 1,5 mês de venda em tudo: R$ 6 mil rendem +50% de procura':covs.length?'estoque curto: marketing agora só geraria frustração':'sem estoque: marketing seria dinheiro jogado fora';
+  if(err==='mkt'){plan.mkt=18000;plan.mktWhy='momento de acelerar: R$ 18 mil em marketing';plan.errDesc='exagerou no marketing sem estoque para atender';}
+  for(const p of PRODUCTS){if(p.anu&&lic(s,p.id).status==='none'&&s.turn<=9)plan.licenses.push(p.id);}
+  // compras
+  const saveBuy={...ui.buy};const sup=SUPPLIERS.find(f=>f.mult===1)||SUPPLIERS[1];let budget=s.cash-15000;const mon=i=>SEASON[(m+i)%12]/SEASON[m];
+  if(s.turn<=10)for(const p of PRODUCTS){if(p.anu&&!licOk(s,p.id))continue;const st=stk(s,p.id);const mk=marketPrice(s,p.id);const d=demandFor(s,p.id,mk,chan,1);const dem=Math.round(d.mp)+Math.round(d.b2b);if(dem<=0)continue;
+    const transit=s.ships.filter(x=>x.pid===p.id).reduce((a,x)=>a+x.qty,0);
+    const pick=k=>{ui.buy={pid:p.id,sid:sup.id,qty:200,modal:k,lock:false,seguro:k!=='aereo'&&k!=='courier',insp:sup.rel<0.9};return buyPreview();};
+    const cands=['lcl','aereo'].map(k=>({k,q:pick(k)})).filter(c=>!c.q.err||!/MOQ|mínimo/.test(c.q.err));
+    const lead=k=>MODAIS[k].lead;let need=k=>{let t=0;for(let i=0;i<=lead(k)+1;i++)t+=dem*mon(i);return Math.max(0,Math.round((t-st.qty-transit)/10)*10);};
+    let modal=st.qty+transit===0?'aereo':'lcl';if(err==='modal')modal='aereo';
+    let qty=need(modal);if(qty<=0)continue;qty=Math.max(qty,moqOf(s,sup));if(err==='qty'){qty*=2;}
+    const radarRoom=(RADAR[s.radar.level].limit-s.radar.used)/(p.fob*sup.mult)*0.95;qty=Math.min(qty,Math.floor(radarRoom/10)*10);
+    for(let tries=0;tries<12&&qty>=moqOf(s,sup);tries++){ui.buy={pid:p.id,sid:sup.id,qty,modal,lock:s.dHist.length>=3&&s.dollar>s.dHist[s.dHist.length-3]*1.04,seguro:modal!=='aereo',insp:sup.rel<0.9};const pv=buyPreview();
+      if(pv.err){qty=Math.floor(qty*0.8/10)*10;continue;}
+      const chegada=pv.c.total-pv.c.fobBRL+pv.sh.fobUSD*(1-sup.deposit)*pv.rate;
+      if(pv.sinal+chegada*0.6>budget){qty=Math.floor(qty*0.8/10)*10;continue;}
+      budget-=pv.sinal+chegada*0.6;plan.sinais+=pv.sinal;
+      plan.buys.push({pid:p.id,sid:sup.id,qty,modal,lock:ui.buy.lock,seguro:ui.buy.seguro,insp:ui.buy.insp,eta:pv.eta,sinal:pv.sinal,unit:pv.c.total/pv.sh.qty,ncmWrong:err==='ncm'&&!plan.buys.some(b=>b.ncmWrong),why:`${st.qty+transit===0?'sem estoque nem trânsito: aéreo para vender já em '+monthName(pv.eta):'cobre '+(lead(modal)+2)+' meses de venda a partir de '+monthName(pv.eta)}${ui.buy.lock?' · dólar em alta: trava o câmbio':''}`});break;}
+  }
+  ui.buy=saveBuy;buyPreview();
+  if(err==='qty'&&plan.buys.length)plan.errDesc='pediu o dobro do necessário e travou caixa em estoque';
+  if(err==='modal'&&plan.buys.length)plan.errDesc='mandou tudo por aéreo quando o marítimo bastava: frete caro';
+  if(err==='ncm'&&plan.buys.some(b=>b.ncmWrong))plan.errDesc='classificou um pedido na NCM errada: risco de canal vermelho e multa';
+  if(!plan.errDesc)plan.err=null;
+  // recomendações de diretoria (não aplicadas automaticamente)
+  if(sysLv(s)===0&&s.cash>20000)plan.notes.push('Contrate um sistema de gestão: sem NF-e o marketplace fica bloqueado e a fiscalização pode parar a operação.');
+  const nx=RADAR[s.radar.level+1];if(nx&&RADAR[s.radar.level].limit!==Infinity&&s.radar.used>RADAR[s.radar.level].limit*0.6&&s.imports>=nx.req)plan.notes.push(`Habilite o Radar ${nx.name} antes do próximo pedido: ${Math.round(s.radar.used/RADAR[s.radar.level].limit*100)}% do limite já usado.`);
+  const m3=stockM3(s)+s.ships.reduce((a,x)=>a+x.qty*P(x.pid).m3,0)+plan.buys.reduce((a,b)=>a+b.qty*P(b.pid).m3,0);if(m3>whCap(s)&&s.wh<WAREHOUSES.length-1)plan.notes.push(`Alugue o ${WAREHOUSES[s.wh+1].name}: estoque e chegadas somam ${m3.toFixed(1)} m³ para ${whCap(s)} m³ de capacidade.`);
+  if(s.turn>=11)plan.notes.push('Não compre mais: pedido agora não chega a tempo de vender. Gire o estoque que tem.');
+  if(s.loans.giro>0&&s.cash>s.loans.giro+30000)plan.notes.push(`Quite o capital de giro (${fmt(s.loans.giro)}): os juros comem a margem.`);
+  return plan;}
+function renderConsultoria(){const s=S;const C=CONSULTORIAS[conLv(s)];
+  if(!C){$('#tab').innerHTML=`<div class="panel"><h2>Consultoria</h2><p class="muted">Sala vazia. Na Diretoria você contrata uma consultoria de Comex: o consultor monta o plano de cada mês aqui, e você aplica com um clique.</p><div class="actions"><button class="primary" id="goDir">Ir para a Diretoria</button></div></div>`;$('#goDir').onclick=()=>goRoom('investir');return;}
+  const pl=buildPlan(s);const applied=s.consult.applied===s.turn;
+  $('#tab').innerHTML=`<div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-start"><h2>Plano de ${monthName(s.turn)} ${tip('O consultor lê a mesma tela que você: demanda, estoque, trânsito, caixa, dólar e Radar. Aplicar executa compras (no preço de lista, sem o minigame), preços, canais, marketing e anuências de uma vez. Você pode aplicar e depois ajustar qualquer coisa, ou seguir só parte. Consultor erra de vez em quando, e você só descobre no fechamento.')}</h2><div class="small muted" style="text-align:right">${spr('sup'+C.lv,2)} <b>${C.who}</b><br>${C.name}</div></div>
+   ${applied?'<p class="good small">Plano aplicado neste mês. Ajuste o que quiser nas salas.</p>':''}
+   <h3 style="margin-top:10px">Compras</h3>${pl.buys.length?`<div class="tbl dense"><table><tr><th>Produto</th><th class="n">Qtd</th><th>Fornecedor</th><th>Modal</th><th class="n">Sinal</th><th class="n">Custo/un.</th><th>Chega</th><th>Por quê</th></tr>${pl.buys.map(b=>`<tr><td>${spr(b.pid,2)} ${P(b.pid).name}</td><td class="n">${b.qty}</td><td>${SUP(b.sid).flag} ${SUP(b.sid).name.split(' ')[0]}</td><td>${MODAIS[b.modal].name.split(' (')[0]}${b.insp?' · inspeção':''}${b.lock?' · câmbio travado':''}</td><td class="n">${fmt(b.sinal)}</td><td class="n">${fmtR(b.unit)}</td><td>${monthName(b.eta)}</td><td class="small muted">${b.why}</td></tr>`).join('')}</table></div>`:`<p class="small muted">${s.turn>=11?'Nenhuma compra: pedido agora não chega a tempo de vender.':'Nenhuma compra este mês: estoque e trânsito cobrem a procura, ou o caixa não comporta um pedido.'}</p>`}
+   <h3 style="margin-top:12px">Preços e canais</h3><div class="tbl dense"><table><tr><th>Produto</th><th class="n">Mercado</th><th class="n">Preço sugerido</th><th>Canal</th><th>Por quê</th></tr>${PRODUCTS.map(p=>{const v=pl.prices[p.id];return `<tr><td>${spr(p.id,2)} ${p.name}</td><td class="n">${fmt(marketPrice(s,p.id))}</td><td class="n"><b>${fmt(v.price)}</b></td><td>${v.channel==='ambos'?'Ambos':'B2B'}</td><td class="small muted">${v.why}</td></tr>`;}).join('')}</table></div>
+   <h3 style="margin-top:12px">Marketing</h3><p><b>${fmt(pl.mkt)}/mês</b> <span class="small muted">· ${pl.mktWhy}</span></p>
+   ${pl.licenses.length?`<h3 style="margin-top:12px">Anuências</h3><p>${pl.licenses.map(pid=>`Solicitar ${P(pid).anu.org} para <b>${P(pid).name}</b> (${fmt(P(pid).anu.cost)})`).join(' · ')}</p>`:''}
+   ${pl.notes.length?`<h3 style="margin-top:12px">Diretoria <span class="small muted">(não entra no Aplicar)</span></h3><ul class="small" style="margin:4px 0 0 18px;padding:0">${pl.notes.map(n=>`<li>${n}</li>`).join('')}</ul>`:''}
+   <div class="actions"><button class="primary big" id="aplicar" ${applied||s.over?'disabled':''}>Aplicar plano de ${monthName(s.turn)}</button><span class="small muted">gasta agora ${fmt(pl.sinais+pl.licenses.reduce((a,pid)=>a+P(pid).anu.cost,0))} em sinais e anuências</span></div></div>`;
+  const ap=$('#aplicar');if(ap)ap.onclick=aplicarPlano;}
+function aplicarPlano(){const s=S;const C=CONSULTORIAS[conLv(s)];const pl=buildPlan(s);if(!pl||s.consult.applied===s.turn)return;
+  confirmar({icon:'sup'+C.lv,title:`Aplicar o plano de ${C.who}?`,yes:'Aplicar',html:`<p>${pl.buys.length} pedido(s), preços e canais de ${PRODUCTS.length} produtos, marketing de ${fmt(pl.mkt)}${pl.licenses.length?` e ${pl.licenses.length} anuência(s)`:''}.</p><p class="small muted">Sai do caixa agora: ${fmt(pl.sinais+pl.licenses.reduce((a,pid)=>a+P(pid).anu.cost,0))}. Tudo fica listado em "Revisar e rodar" e pode ser desfeito.</p>`,onYes:()=>{
+    ensureSnap();const feitos=[],pulados=[];
+    for(const pid of pl.licenses)doLicenca(pid);
+    for(const [pid,v] of Object.entries(pl.prices)){stk(s,pid).price=v.price;stk(s,pid).channel=v.channel;}
+    s.mkt=pl.mkt;
+    for(const b of pl.buys){ui.buy={pid:b.pid,sid:b.sid,qty:b.qty,modal:b.modal,lock:b.lock,seguro:b.seguro,insp:b.insp};const pv=buyPreview();if(pv.err||s.cash<pv.sinal){pulados.push(`${b.qty} ${P(b.pid).name}: ${pv.err||'caixa insuficiente para o sinal'}`);continue;}
+      const st=stk(s,b.pid);const prev={c:st.ncm,ok:st.ncmOk};const okN=P(b.pid).ncm.find(n=>n.ok);const badN=P(b.pid).ncm.find(n=>!n.ok)||okN;const use=b.ncmWrong?badN:(st.ncm===null?okN:null);if(use){st.ncm=use.c;st.ncmOk=use.ok;}
+      const sup=SUP(b.sid);const k=anaLv(s)>=3?'good':'neutral';const o=sup.opts.find(x=>x.k===k)||{why:''};finishBuy(buyPreview(),k,o,'consultor');
+      if(b.ncmWrong){st.ncm=prev.c===null?okN.c:prev.c;st.ncmOk=prev.c===null?true:prev.ok;}
+      feitos.push(`${b.qty} ${P(b.pid).name} por ${MODAIS[b.modal].name.split(' (')[0]}, chega em ${monthName(b.eta)}`);}
+    s.consult.applied=s.turn;s.consult.errDesc=pl.errDesc;log(s,`Plano de ${C.who} aplicado${pulados.length?' (parte ficou de fora)':''}.`);
+    openModal({icon:'coin',title:'Plano aplicado',html:`${feitos.length?`<p><b>Pedidos:</b> ${feitos.join('; ')}.</p>`:'<p>Nenhum pedido este mês.</p>'}${pulados.length?`<p class="warn small">Ficou de fora: ${pulados.join('; ')}.</p>`:''}<p>Preços, canais e marketing ajustados. Revise tudo em "Revisar e rodar".</p>`,buttons:[{label:'Ok',cls:'primary'}]});renderGame();}});}
 function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];const lim=RADAR[s.radar.level].limit;const feitos=MARCOS.filter(mc=>(s.marcos||[]).includes(mc.id)).length;
   // Diretoria enxuta: só nomes, valores e botões à vista; toda explicação fica atrás do ícone de dica. Nível e marcos por último.
   $('#tab').innerHTML=`<div class="panel"><h2>Diretoria</h2>
    <h3 style="margin-top:10px">Armazenagem ${tip('Cada produto ocupa espaço em m³. O que passar da capacidade vai para um 3PL a '+fmt(THREEPL)+' por m³ ao mês. O galpão alugado vale até o fim do ano.')}</h3><div class="cards">${WAREHOUSES.map((w,i)=>`<div class="card ${s.wh===i?'on':''}"><h3>${w.name} ${tip(w.desc)}</h3><div class="m">${w.cap} m³ · ${w.rent?fmt(w.rent)+'/mês':'sem aluguel'}</div>${i>s.wh?`<button style="margin-top:8px" data-wh="${i}">Alugar</button>`:s.wh===i?'<div class="m good" style="margin-top:8px">atual</div>':''}</div>`).join('')}</div>
    <h3 style="margin-top:14px">Sistema de gestão ${tip((sysLv(s)===0?'<b>Sem sistema</b> você não emite NF-e: marketplace bloqueado, só metade dos clientes B2B compra e há 20% de chance por mês de a fiscalização multar e parar a operação.<br>':'')+'Cada plano acumula as vantagens do anterior. Mensalidade até o fim do ano; sem downgrade.')}</h3><div class="cards" style="margin-top:8px">
-    ${SYSTEMS.slice(1).map(t=>`<div class="card ${sysLv(s)===t.lv?'on':''}">${t.lv>=2?spr('mia',2):spr('box',2)}<h3>${t.name} ${tip(t.desc)}</h3><div class="m">${fmt(t.fee)}/mês</div>${sysLv(s)===t.lv?'<div class="m good" style="margin-top:8px">plano atual</div>':sysLv(s)>t.lv?'<div class="m muted" style="margin-top:8px">superado</div>':`<button class="${t.lv>=2?'primary':''}" style="margin-top:8px" data-sys="${t.lv}">${sysLv(s)>0?'Fazer upgrade':'Contratar'}</button>`}</div>`).join('')}
+    ${SYSTEMS.slice(1).map(t=>`<div class="card ${sysLv(s)===t.lv?'on':''}">${t.lv>=2?spr('office',2):spr('box',2)}<h3>${t.name} ${tip(t.desc)}</h3><div class="m">${fmt(t.fee)}/mês</div>${sysLv(s)===t.lv?'<div class="m good" style="margin-top:8px">plano atual</div>':sysLv(s)>t.lv?'<div class="m muted" style="margin-top:8px">superado</div>':`<button class="${t.lv>=2?'primary':''}" style="margin-top:8px" data-sys="${t.lv}">${sysLv(s)>0?'Fazer upgrade':'Contratar'}</button>`}</div>`).join('')}
     </div>
    <h3 style="margin-top:14px">Equipe ${tip('Analista de Comex: desconto no preço do fornecedor e no frete, crescente com a senioridade. O sênior conduz a negociação sozinho, sempre no melhor desconto. Custo fixo mensal até o fim do ano; dá para promover, não para rebaixar.')}</h3><div class="cards" style="margin-top:8px">
     ${ANALISTAS.slice(1).map(A=>`<div class="card ${anaLv(s)===A.lv?'on':''}">${spr('sup2',2)}<h3>${A.name} ${tip(A.desc)}</h3><div class="m">${fmt(A.fee)}/mês · -${Math.round(A.disc*100)}% preço · -${Math.round(A.freight*100)}% frete</div>${anaLv(s)===A.lv?'<div class="m good" style="margin-top:8px">na equipe</div>':anaLv(s)>A.lv?'<div class="m muted" style="margin-top:8px">abaixo do atual</div>':`<button style="margin-top:8px" data-ana="${A.lv}">${anaLv(s)?'Promover':'Contratar'}</button>`}</div>`).join('')}
+   </div>
+   <h3 style="margin-top:14px">Consultoria de Comex ${tip('Não dá bônus: abre a sala Consultoria, onde o consultor monta o plano do mês (o que comprar, por quanto vender, quanto investir em marketing, que anuência pedir) e você aplica tudo com um clique, ou segue só o que quiser. Consultor erra: quanto mais avançada a consultoria, menos. Custo fixo mensal até o fim do ano; dá para trocar.')}</h3><div class="cards" style="margin-top:8px">
+    ${CONSULTORIAS.slice(1).map(C=>`<div class="card ${conLv(s)===C.lv?'on':''}">${spr('sup'+C.lv,2)}<h3>${C.nivel} · ${C.who} ${tip(C.desc)}</h3><div class="m">${C.name}</div><div class="m">${fmt(C.fee)}/mês · acerta ${Math.round((1-C.err)*100)}%</div>${conLv(s)===C.lv?'<div class="m good" style="margin-top:8px">contratada</div>':`<button style="margin-top:8px" data-con="${C.lv}">${conLv(s)?'Trocar':'Contratar'}</button>`}</div>`).join('')}
    </div>
    <h3 style="margin-top:14px">Expansão ${tip('Santa Catarina, Espírito Santo e outros estados concedem TTDs que diferem o ICMS da importação e aplicam crédito presumido na saída. O custo de nacionalização cai bastante, mas exige estrutura real no estado e deixa de valer gradualmente com a Reforma Tributária (2029 a 2032).')}</h3><div class="cards" style="margin-top:8px"><div class="card ${filialOk(s)?'on':''}">${spr('office',2)}<h3>${FILIAL.name} ${tip(`ICMS da importação diferido no desembaraço; você paga carga efetiva de 2,6% nas vendas, em vez de 18% por dentro no custo. Soma ${FILIAL.cap} m³ de galpão. Exige ${FILIAL.reqImports} importações concluídas e Radar Limitada. Só compensa para quem importa mais de uns R$ 25 mil por mês: abaixo disso o custo fixo come a economia.`)}</h3><div class="m">${fmt(FILIAL.setup)} + ${fmt(FILIAL.rent)}/mês · pronta em ${FILIAL.lead} mês</div>${filialOk(s)?'<div class="m good" style="margin-top:8px">em operação</div>':s.filial&&s.filial.status==='setup'?'<div class="m warn" style="margin-top:8px">em implantação · opera em '+monthName(s.filial.ready)+'</div>':`<button class="primary" style="margin-top:8px" id="filial" ${s.imports<FILIAL.reqImports||s.radar.level<FILIAL.reqRadar||s.cash<FILIAL.setup?'disabled':''}>Abrir filial</button>${s.imports<FILIAL.reqImports||s.radar.level<FILIAL.reqRadar?'<div class="m muted" style="margin-top:6px">exige '+FILIAL.reqImports+' importações e Radar Limitada</div>':''}`}</div></div>
    <h3 style="margin-top:14px">Radar Siscomex ${tip('Habilitação da Receita para operar no Siscomex (IN RFB 1.984/2020). <b>Expressa</b> sai automática e limita US$ 50 mil CIF por semestre. <b>Limitada</b> vai a US$ 150 mil. <b>Ilimitada</b> depende da capacidade financeira estimada. Subir de modalidade custa consultoria e revisão da capacidade financeira, e exige importações concluídas. O limite renova em julho.')}</h3>
@@ -1444,10 +1513,10 @@ function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];const lim=RA
    <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px"><div><b>Nv ${level(s).n} · ${level(s).name}</b>${nextLevel(s)?` <span class="small muted">· ${fmt(xp(s))} de ${fmt(nextLevel(s).xp)} para ${nextLevel(s).name}</span><div class="bar" style="width:260px;margin-top:6px"><i style="width:${Math.min(100,Math.round(xp(s)/nextLevel(s).xp*100))}%"></i></div>`:' <span class="small good">· nível máximo</span>'}</div></div>
    <details class="casc"><summary>Marcos (${feitos} de ${MARCOS.length})</summary><div class="tbl"><table>${MARCOS.map(mc=>`<tr><td>${(s.marcos||[]).includes(mc.id)?'<span class="pill verde">feito</span>':'<span class="pill info">pendente</span>'}</td><td>${mc.name}</td></tr>`).join('')}</table></div></details></div>`;
   document.querySelectorAll('[data-wh]').forEach(e=>e.onclick=()=>buyWarehouse(+e.dataset.wh));
-  document.querySelectorAll('[data-sys]').forEach(b=>b.onclick=()=>contratarSistema(+b.dataset.sys));document.querySelectorAll('[data-ana]').forEach(b=>b.onclick=()=>contratarAnalista(+b.dataset.ana));const r=$('#radar');if(r)r.onclick=upRadar;const fb=$('#filial');if(fb)fb.onclick=abrirFilial;
+  document.querySelectorAll('[data-sys]').forEach(b=>b.onclick=()=>contratarSistema(+b.dataset.sys));document.querySelectorAll('[data-ana]').forEach(b=>b.onclick=()=>contratarAnalista(+b.dataset.ana));document.querySelectorAll('[data-con]').forEach(b=>b.onclick=()=>contratarConsultoria(+b.dataset.con));const r=$('#radar');if(r)r.onclick=upRadar;const fb=$('#filial');if(fb)fb.onclick=abrirFilial;
 }
 function projectCash(s){const rows=[];let cash=s.cash;const stock=Object.fromEntries(PRODUCTS.map(p=>[p.id,stk(s,p.id).qty]));const recv={};for(const r of s.recv){recv[r.due]=(recv[r.due]||0)+r.amount;}
-  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
+  const fixos=FIXED_COST+WAREHOUSES[s.wh].rent+SYSTEMS[sysLv(s)].fee-(sysLv(s)>=2?800:0)-(sysLv(s)>=3?800:0)+anaFee(s)+conFee(s)+(s.filial&&s.filial.status!=='none'?FILIAL.rent:0)+(s.mkt||0);
   const juros=Math.round(s.loans.giro*giroRate(s)+s.loans.finimp*FINIMP_RATE);const saveTurn=s.turn;
   for(let m=s.turn;m<=12;m++){s.turn=m;let vendas=0,b2bNew=0,ttd=0;
     for(const p of PRODUCTS){const st=stk(s,p.id);if(stock[p.id]<=0)continue;const d=demandFor(s,p.id,st.price,st.channel,1);let left=stock[p.id];const qMp=Math.min(left,Math.round(d.mp));left-=qMp;const qB=Math.min(left,Math.round(d.b2b));left-=qB;stock[p.id]=left;vendas+=qMp*st.price*0.82;b2bNew+=qB*st.price;if(filialOk(s)&&(s.filial.ready||0)<=m)ttd+=Math.round((qMp+qB)*st.price*FILIAL.icmsEfetivo);}
@@ -1484,7 +1553,7 @@ function renderFinancas(){const s=S;const recv=s.recv.reduce((a,r)=>a+r.amount,0
    <div class="row" style="margin-top:6px"><div style="flex:1;min-width:240px"><b>Capital de giro</b> ${tip(`Crédito rápido do banco, ${(giroRate(s)*100).toFixed(1)}% ao mês sobre o saldo devedor, cobrado em cada fechamento. Use como ponte entre pagar o fornecedor e receber do cliente, nunca para financiar prejuízo.`)} · ${(giroRate(s)*100).toFixed(1)}% ao mês · limite ${fmt(GIRO_MAX)}<br><span class="small muted">Saldo devedor ${fmt(s.loans.giro)}</span><div class="row" style="margin-top:6px"><input type="number" id="giroAmt" step="5000" value="20000"><button data-loan="giro" data-dir="1">Tomar</button><button data-loan="giro" data-dir="-1" ${!s.loans.giro?'disabled':''}>Pagar</button></div></div>
    <div style="flex:1;min-width:240px"><b>FINIMP</b> ${tip('Financiamento à importação: linha bancária em moeda estrangeira para pagar o fornecedor, com juros menores que o giro. Exige histórico: liberada após 2 importações concluídas.')} · ${(FINIMP_RATE*100).toFixed(1)}% ao mês · limite ${fmt(FINIMP_MAX)}<br><span class="small muted">${s.imports>=2?'Saldo devedor '+fmt(s.loans.finimp):'Liberado após 2 importações concluídas (você tem '+s.imports+')'}</span><div class="row" style="margin-top:6px"><input type="number" id="finAmt" step="5000" value="50000" ${s.imports<2?'disabled':''}><button data-loan="finimp" data-dir="1" ${s.imports<2?'disabled':''}>Tomar</button><button data-loan="finimp" data-dir="-1" ${!s.loans.finimp?'disabled':''}>Pagar</button></div></div></div>
    <div class="row" style="margin-top:12px"><div><b>Antecipar recebíveis (FIDC)</b> ${tip('Um fundo (FIDC) compra seus recebíveis B2B e paga à vista com 5% de deságio. Transforma venda a prazo em caixa hoje; custa mais que esperar, mas menos que o capital de giro.')}<br><span class="small muted">${recv?'Recebe '+fmt(recv*0.95)+' hoje em vez de '+fmt(recv)+' em até 60 dias.':'Nenhum recebível em aberto.'}</span></div><button id="fidc" ${!recv?'disabled':''}>Antecipar</button></div>
-   ${mia('Juros de giro a 3,2% ao mês comem qualquer margem de eletrônicos. Use crédito pra atravessar o intervalo entre pagar o fornecedor e receber do cliente, nunca pra financiar prejuízo.')}</div>
+   </div>
    ${s.hist.length?`<div class="panel"><h3>Histórico mensal</h3><div class="tbl"><table><tr><th>Mês</th><th class="n">Receita</th><th class="n">Margem bruta</th><th class="n">Fixos</th><th class="n">Resultado</th><th class="n">Caixa</th></tr>${s.hist.map(h=>`<tr><td>${h.month}</td><td class="n">${fmt(h.m.rev)}</td><td class="n">${fmt(h.m.margin)}</td><td class="n">-${fmt(h.m.fixed+h.m.interest+h.m.nfe+h.m.other)}</td><td class="n ${h.m.result<0?'bad':'good'}">${fmt(h.m.result)}</td><td class="n">${fmt(h.m.cashEnd)}</td></tr>`).join('')}</table></div></div>`:''}`;
   document.querySelectorAll('[data-loan]').forEach(b=>b.onclick=()=>{const amt=+$(b.dataset.loan==='giro'?'#giroAmt':'#finAmt').value;loan(b.dataset.loan,amt*(+b.dataset.dir));});
   $('#fidc').onclick=antecipar;drawDollar(s);

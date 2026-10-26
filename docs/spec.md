@@ -387,3 +387,8 @@ Pontos que seguem simplificados e que um especialista pode questionar: armazenag
 ### Adendo 26/10/2026 — sem sala de Mercado
 
 A sala "Inteligência de mercado" foi removida. Preço de venda, demanda estimada (3 meses), estoque + trânsito e sazonalidade aparecem na sala de compras para o produto selecionado; o gráfico do dólar foi para o Financeiro; a tabela de tributos por NCM fica atrás de uma seta na compra; o painel "O que aconteceu no mês" abriu a sala de vendas. A margem por produto (custo nacionalizado × preço de venda) só aparece com Mainô Plano Gestão ou superior, na compra e na previsão de vendas; sem ele, o jogador vê um cadeado e a sugestão de contratar na Diretoria.
+
+
+### Adendo 26/10/2026 — sem Mia; consultoria de Comex
+
+A mentora Mia foi removida: o painel lateral mostra só o Diário da empresa; notas didáticas saíram e sobraram apenas alertas de contexto (caixa negativo, sem estoque, resultado da negociação). Na Diretoria há uma nova contratação, Consultoria de Comex, em três níveis sem bônus: Iniciante (Tiago Ramos, Primeiro Embarque, R$ 800/mês, acerta 70%), Intermediária (Renata Lima, Porto & Cia, R$ 1.800, 85%) e Avançada (Marcos Veiga, Horizonte Global, R$ 3.500, 95%). Ela abre a sala Consultoria com o plano do mês (compras com fornecedor, modal, quantidade e câmbio; preços e canais; marketing; anuências; recomendações de Diretoria) e o botão Aplicar, que executa tudo no preço de lista e registra como comandos reversíveis. A cada rodada o consultor pode errar (quantidade dobrada, preço 25% acima, tudo por aéreo, marketing sem estoque ou NCM errada num pedido); o erro fica escondido no plano e é revelado nos Avisos do fechamento seguinte.
