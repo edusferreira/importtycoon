@@ -1439,21 +1439,25 @@ function buildPlan(s){const C=CONSULTORIAS[conLv(s)];if(!C)return null;
   if(err==='mkt'){plan.mkt=18000;plan.mktWhy='momento de acelerar: R$ 18 mil em marketing';plan.errDesc='exagerou no marketing sem estoque para atender';}
   for(const p of PRODUCTS){if(p.anu&&lic(s,p.id).status==='none'&&s.turn<=9)plan.licenses.push(p.id);}
   // compras
-  const saveBuy={...ui.buy};const sup=SUPPLIERS.find(f=>f.mult===1)||SUPPLIERS[1];let budget=s.cash-15000;const mon=i=>SEASON[(m+i)%12]/SEASON[m];
+  const saveBuy={...ui.buy};const sup=SUPPLIERS.find(f=>f.mult===1)||SUPPLIERS[1];const mon=i=>SEASON[(m+i)%12]/SEASON[m];const pseudos=[];let sinais=0;
+  // cada pedido só entra se, com ele e os anteriores, a projeção de caixa do jogo (vendas, chegadas, fixos) nunca cair abaixo de uma reserva
+  const cabe=(pv,lock)=>{const ps={...pv.sh,lockRate:lock?pv.rate:null,eta:pv.eta,canal:null,id:'plano'};const c0=s.cash;s.cash-=sinais+pv.sinal;s.ships.push(...pseudos,ps);let ok;try{const rows=projectCash(s);ok=Math.min(s.cash,...rows.map(r=>r.cashEnd))>=FIXED_COST*3;}finally{s.ships.splice(s.ships.length-pseudos.length-1,pseudos.length+1);s.cash=c0;}return ok?ps:null;};
   if(s.turn<=10)for(const p of PRODUCTS){if(p.anu&&!licOk(s,p.id))continue;const st=stk(s,p.id);const mk=marketPrice(s,p.id);const d=demandFor(s,p.id,mk,chan,1);const dem=Math.round(d.mp)+Math.round(d.b2b);if(dem<=0)continue;
     const transit=s.ships.filter(x=>x.pid===p.id).reduce((a,x)=>a+x.qty,0);
-    const pick=k=>{ui.buy={pid:p.id,sid:sup.id,qty:200,modal:k,lock:false,seguro:k!=='aereo'&&k!=='courier',insp:sup.rel<0.9};return buyPreview();};
-    const cands=['lcl','aereo'].map(k=>({k,q:pick(k)})).filter(c=>!c.q.err||!/MOQ|mínimo/.test(c.q.err));
-    const lead=k=>MODAIS[k].lead;let need=k=>{let t=0;for(let i=0;i<=lead(k)+1;i++)t+=dem*mon(i);return Math.max(0,Math.round((t-st.qty-transit)/10)*10);};
-    let modal=st.qty+transit===0?'aereo':'lcl';if(err==='modal')modal='aereo';
+    const lead=k=>MODAIS[k].lead;const need=k=>{let t=0;for(let i=0;i<=lead(k);i++)t+=dem*mon(i);return Math.max(0,Math.round((t-st.qty-transit)/10)*10);};
+    // custo por unidade na quantidade que de fato seria pedida (os custos fixos do embarque pesam em pedido pequeno)
+    const est=k=>{if(need(k)<=0)return Infinity;let q=Math.max(need(k),moqOf(s,sup));for(let i=0;i<5&&q>=moqOf(s,sup);i++){ui.buy={pid:p.id,sid:sup.id,qty:q,modal:k,lock:false,seguro:k!=='aereo',insp:sup.rel<0.9};const r=buyPreview();if(!r.err)return r.c.total/r.sh.qty;q=Math.floor(q*0.6/10)*10;}return Infinity;};
+    const uA=est('aereo'),uL=est('lcl');if(uA===Infinity&&uL===Infinity)continue;
+    let modal=(st.qty+transit===0&&uA<=uL*1.2)||uL===Infinity?'aereo':'lcl';if(err==='modal')modal='aereo';
+    if(Math.min(uA,uL)>mk*0.82){plan.notes.push(`${p.name}: custo nacionalizado ${fmtR(Math.min(uA,uL))} por unidade não cabe no preço de venda ${fmt(mk)} líquido de comissão. Não compre por enquanto.`);continue;}
+    if(s.turn+lead(modal)>11)continue; // precisa chegar até novembro para ter ao menos dois fechamentos de venda
     let qty=need(modal);if(qty<=0)continue;qty=Math.max(qty,moqOf(s,sup));if(err==='qty'){qty*=2;}
     const radarRoom=(RADAR[s.radar.level].limit-s.radar.used)/(p.fob*sup.mult)*0.95;qty=Math.min(qty,Math.floor(radarRoom/10)*10);
     for(let tries=0;tries<12&&qty>=moqOf(s,sup);tries++){ui.buy={pid:p.id,sid:sup.id,qty,modal,lock:s.dHist.length>=3&&s.dollar>s.dHist[s.dHist.length-3]*1.04,seguro:modal!=='aereo',insp:sup.rel<0.9};const pv=buyPreview();
       if(pv.err){qty=Math.floor(qty*0.8/10)*10;continue;}
-      const chegada=pv.c.total-pv.c.fobBRL+pv.sh.fobUSD*(1-sup.deposit)*pv.rate;
-      if(pv.sinal+chegada*0.6>budget){qty=Math.floor(qty*0.8/10)*10;continue;}
-      budget-=pv.sinal+chegada*0.6;plan.sinais+=pv.sinal;
-      plan.buys.push({pid:p.id,sid:sup.id,qty,modal,lock:ui.buy.lock,seguro:ui.buy.seguro,insp:ui.buy.insp,eta:pv.eta,sinal:pv.sinal,unit:pv.c.total/pv.sh.qty,ncmWrong:err==='ncm'&&!plan.buys.some(b=>b.ncmWrong),why:`${st.qty+transit===0?'sem estoque nem trânsito: aéreo para vender já em '+monthName(pv.eta):'cobre '+(lead(modal)+2)+' meses de venda a partir de '+monthName(pv.eta)}${ui.buy.lock?' · dólar em alta: trava o câmbio':''}`});break;}
+      const ps=cabe(pv,ui.buy.lock);if(!ps){qty=Math.floor(qty*0.75/10)*10;continue;}
+      pseudos.push(ps);sinais+=pv.sinal;plan.sinais+=pv.sinal;
+      plan.buys.push({pid:p.id,sid:sup.id,qty,modal,lock:ui.buy.lock,seguro:ui.buy.seguro,insp:ui.buy.insp,eta:pv.eta,sinal:pv.sinal,unit:pv.c.total/pv.sh.qty,ncmWrong:err==='ncm'&&!plan.buys.some(b=>b.ncmWrong),why:`${st.qty+transit===0?'sem estoque nem trânsito: aéreo para vender já em '+monthName(pv.eta):'cobre '+(lead(modal)+1)+' meses de venda a partir de '+monthName(pv.eta)}${ui.buy.lock?' · dólar em alta: trava o câmbio':''}`});break;}
   }
   ui.buy=saveBuy;buyPreview();
   if(err==='qty'&&plan.buys.length)plan.errDesc='pediu o dobro do necessário e travou caixa em estoque';
