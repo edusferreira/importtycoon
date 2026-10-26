@@ -14,6 +14,7 @@ Um único arquivo HTML, sem backend. Modo único: Desafio da semana, com a mesma
 | `sim/sim.mjs` | Simulador com bots (mestre, prudente, ingênuo, passivo, afobado, imprudente) para balanceamento |
 | `sim/play.mjs` | Partida roteirizada "humana" para conferir o loop ponta a ponta |
 | `sim/mundo.mjs` | Prova de que jogadores com decisões diferentes veem o mesmo dólar e os mesmos eventos na mesma semana |
+| `sim/consult.mjs` | Mede o que acontece seguindo a consultoria todo mês, por nível e com ou sem Mainô Gestão |
 
 ## Rodar localmente
 
