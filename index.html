@@ -116,6 +116,10 @@ td.n,th.n{text-align:right;white-space:nowrap}
 .log .t{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
 .overlay{position:fixed;inset:0;background:rgba(10,18,34,.55);display:grid;place-items:center;z-index:20;padding:max(16px,env(safe-area-inset-left,0px))}
+/* Easter egg: fogos em pixel art ao cruzar R$ 1 milhão de faturamento */
+#fogos{position:fixed;inset:0;z-index:40;pointer-events:none;image-rendering:pixelated}
+.toast-milhao{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:41;pointer-events:none;background:#1A2B4A;color:#fff;border:3px solid #00B386;border-radius:12px;padding:14px 22px;font-family:"Press Start 2P",var(--display);font-size:clamp(.7rem,2.6vw,1.1rem);text-align:center;line-height:1.6;box-shadow:0 20px 60px rgba(0,0,0,.45);animation:toastIn .5s ease-out}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-20px)}}
 .modal{background:var(--surface);color:var(--fg);border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:20px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .modal h2{margin-bottom:8px}
 .modal .body{display:flex;flex-direction:column;gap:10px}
@@ -549,6 +553,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
   for(const n of notices){avisos.push(n.aviso);if(n.dica)dicas.push(n.dica);}
   if(s.consult&&s.consult.applied===s.turn-1&&s.consult.errDesc){const C=CONSULTORIAS[conLv(s)];avisos.push({icon:'alerta',cls:'warn',title:`${C.who} errou a mão no plano de ${monthName(s.turn-1)}`,text:s.consult.errDesc});}
   if(s.consult){s.consult.errDesc=null;}
+  if(!s.flags.milhao&&revTot(s)>=1000000){s.flags.milhao=s.turn;avisos.push({icon:'coin',cls:'good',title:'R$ 1 milhão de faturamento!',text:'Sua importadora cruzou um milhão de reais em vendas no ano. Solte os fogos.'});log(s,'Faturamento acumulado passou de R$ 1 milhão.');}
   collectArrivals(report,avisos,dicas);
   if(report.marcos){avisos.push({icon:'coin',cls:'good',title:report.marcos.length>1?'Marcos alcançados':'Marco alcançado',text:`<span class="selos">${report.marcos.map(mc=>`<span class="selo">${mc.name}</span>`).join('')}</span> Cada marco vale ${fmt(MARCO_XP)} de experiência.`});}
   if(report.levelUp){const L=report.levelUp;avisos.push({icon:'office',cls:'good',title:`Nível ${L.n}: ${L.name}`,text:`Vantagem desbloqueada: ${L.perk}${nextLevel(s)?` Próximo: ${nextLevel(s).name}, com ${fmt(nextLevel(s).xp)} de experiência.`:' Nível máximo.'}`});}
@@ -1327,6 +1332,21 @@ function animateStats(prev){if(typeof requestAnimationFrame!=='function'||typeof
     for(const it of items){const v=p<1?it.from+(it.to-it.from)*e:it.to;it.el.textContent=it.pre+STAT_FMT[it.k](v)+it.suf;}
     if(p<1)requestAnimationFrame(step);else setTimeout(()=>items.forEach(it=>it.el.parentElement.classList.remove('up','down')),800);};
   requestAnimationFrame(step);}
+// Fogos em pixel art (4 s), por cima de tudo, sem bloquear clique. Com "reduzir movimento" só o cartaz aparece.
+function fogos(){if(typeof document==='undefined'||!document.body)return;const old=$('#fogos');if(old)old.remove();
+  const toast=document.createElement('div');toast.className='toast-milhao';toast.innerHTML='R$ 1.000.000<br><span style="font-size:.7em;color:#9FE8D3">DE FATURAMENTO</span>';document.body.appendChild(toast);setTimeout(()=>toast.remove(),5200);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const c=document.createElement('canvas');c.id='fogos';document.body.appendChild(c);const x=c.getContext('2d');const sc=4;
+  const fit=()=>{c.width=Math.ceil(innerWidth/sc);c.height=Math.ceil(innerHeight/sc);c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';};fit();
+  const COLORS=['#00B386','#1ED3A5','#FFFFFF','#FFD166','#FF8A8A','#9FE8D3'];const ps=[];let t0=null,last=0;
+  const burst=(bx,by)=>{const col=COLORS[Math.floor(Math.random()*COLORS.length)];const n=40+Math.floor(Math.random()*30);for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=18+Math.random()*34;ps.push({x:bx,y:by,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1.1+Math.random()*.6,col:Math.random()<.3?'#FFFFFF':col});}};
+  const step=now=>{if(t0===null)t0=now;const t=(now-t0)/1000;const dt=Math.min(.05,(now-(last||now))/1000);last=now;
+    if(t<3.2&&Math.random()<.11)burst(c.width*(.15+Math.random()*.7),c.height*(.12+Math.random()*.45));
+    x.clearRect(0,0,c.width,c.height);
+    for(const p of ps){p.life-=dt;if(p.life<=0)continue;p.vy+=28*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;x.globalAlpha=Math.max(0,Math.min(1,p.life));x.fillStyle=p.col;x.fillRect(Math.round(p.x),Math.round(p.y),1,1);}
+    x.globalAlpha=1;for(let i=ps.length-1;i>=0;i--)if(ps[i].life<=0)ps.splice(i,1);
+    if(t<4.5||ps.length)requestAnimationFrame(step);else c.remove();};
+  requestAnimationFrame(step);}
 function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar.used,lim=RADAR[s.radar.level].limit;
   $('#app').innerHTML=`
   <header class="topbar"><div class="in">
@@ -1354,7 +1374,7 @@ function renderGame(){const s=S;if(s.replaying)return;TIPS=[];const used=s.radar
   $('#close').onclick=()=>{if(!S.over)revisarMes();};
   if(walk){$('#tab').innerHTML=`<div class="panel walking">${avatarImg(myAvatar(),3)} <span>${myAvatar().name} está indo para <b>${ROOMS[roomIdx(walk.target)].name}</b>…</span></div>`;}else renderPanel();
   drawOffice();drawBase();
-  if(statPrev){const prev=statPrev;statPrev=null;animateStats(prev);}
+  if(statPrev){const prev=statPrev;statPrev=null;animateStats(prev);if(s.flags.milhao===s.turn&&!s.flags.fogos){s.flags.fogos=true;fogos();}}
 }
 const PANELS={comprar:renderComprar,vendas:renderVendas,investir:renderInvestir,financas:renderFinancas,consultoria:renderConsultoria};
 function renderPanel(){if(!PANELS[ui.room])ui.room='comprar';PANELS[ui.room]();highlightRoom();}
