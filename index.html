@@ -279,9 +279,9 @@ const ANALISTAS=[null,
 ];
 // Consultoria de Comex: não dá bônus; abre a sala Consultoria com o plano do mês (compras, preços, marketing, anuências) e um botão Aplicar. Pode errar: quanto mais avançada, menos.
 const CONSULTORIAS=[null,
- {lv:1,nivel:'Iniciante',name:'Primeiro Embarque Consultoria',who:'Tiago Ramos',short:'consultoria iniciante',fee:2000,err:0.55,desc:'Tiago abriu a própria importadora há três anos e hoje orienta quem está começando. Acerta 55% das recomendações; com o Mainô Plano Gestão, 78%.'},
- {lv:2,nivel:'Intermediária',name:'Porto & Cia Consultoria',who:'Renata Lima',short:'consultoria intermediária',fee:3000,err:0.30,desc:'Renata foi analista de trading por dez anos e cuida de uma carteira de PMEs importadoras. Acerta 75% das recomendações; com o Mainô Plano Gestão, 88%.'},
- {lv:3,nivel:'Avançada',name:'Horizonte Global Consultoria',who:'Marcos Veiga',short:'consultoria avançada',fee:4500,err:0.10,desc:'Marcos é despachante aduaneiro e ex-gerente de Comex de indústria. Acerta 88% das recomendações; com o Mainô Plano Gestão, 94%.'},
+ {lv:1,nivel:'Iniciante',name:'Primeiro Embarque Consultoria',who:'Tiago Ramos',short:'consultoria iniciante',fee:2000,err:0.55,desc:'Tiago abriu a própria importadora há três anos e hoje orienta quem está começando. Acerta 45% das recomendações; com o Mainô Plano Gestão, 72%.'},
+ {lv:2,nivel:'Intermediária',name:'Porto & Cia Consultoria',who:'Renata Lima',short:'consultoria intermediária',fee:3000,err:0.30,desc:'Renata foi analista de trading por dez anos e cuida de uma carteira de PMEs importadoras. Acerta 70% das recomendações; com o Mainô Plano Gestão, 85%.'},
+ {lv:3,nivel:'Avançada',name:'Horizonte Global Consultoria',who:'Marcos Veiga',short:'consultoria avançada',fee:4500,err:0.10,desc:'Marcos é despachante aduaneiro e ex-gerente de Comex de indústria. Acerta 90% das recomendações; com o Mainô Plano Gestão, 95%.'},
 ];
 const conLv=s=>(s.consult&&s.consult.lv)||0;const conFee=s=>conLv(s)?CONSULTORIAS[conLv(s)].fee:0;
 // Potencializada pelo Mainô: com o Plano Gestão o consultor trabalha com margem e demanda exata e erra metade; com qualquer Mainô ERP a NCM nunca sai errada.
