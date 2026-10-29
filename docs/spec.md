@@ -402,3 +402,13 @@ Ao rodar o mês em que o faturamento acumulado cruza R$ 1.000.000, fogos em pixe
 ### Valuation no fim do jogo (26/10/2026)
 
 O número principal da tela final, do card e do texto compartilhado é quanto a empresa vale: patrimônio líquido (caixa + estoque a custo + recebíveis + sinais pagos − dívidas) mais a geração de caixa anualizada (média do resultado dos últimos 3 meses × 12) a um múltiplo de 2,5× ajustado pela confiança da marca. Empresa falida vale zero. O card mostra a composição e termina com "MAINÔ: A ÚNICA EM GESTÃO E COMEX".
+
+## Adendo: balanceamento após o estresse (v60)
+
+- **Consultoria com teto.** A mensalidade sobe 15% a cada mês de contrato (trocar de consultoria não zera a contagem) e o plano cobre cerca de 70% da procura prevista. Seguir "Aplicar" todo mês deixou de empatar com a melhor estratégia manual (mediana 149k/192k/247k contra 245k/308k/270k do bot mestre).
+- **NCM errada passou a tentar e a doer.** A NCM errada declara II 5 p.p. e IPI 3 p.p. menores (é a tentação). Sobe em 30 p.p. a chance de canal vermelho; no vermelho a Receita reclassifica, cobra as alíquotas certas e aplica multa de ofício de 3× a diferença (piso R$ 8 mil). Em 30 seeds, errar de propósito custa ~R$ 18 mil de patrimônio com sistema e vira loteria sem sistema.
+- **FINIMP** passou de 1,3% para 2% ao mês. Crédito no teto continua sendo a aposta de maior retorno em eletrônicos (mediana 313k), mas quebra em 40% das partidas.
+- **Carga retida** avisa como liberar: pedir a homologação/anuência na sala Comex, com custo e prazo.
+- **Marketing sem estoque** mostra alerta ao vivo na sala de vendas e um aviso no fechamento quando houve gasto e nenhuma venda.
+- **Link de desafio.** `?d=<semana>&seg=<segmento>` abre o mesmo mundo (dólar, eventos, procura). A tela inicial mostra "Você foi desafiado" e pré-seleciona o segmento. O texto de compartilhamento leva o link do desafio e o site da Mainô; o card mostra "Desafio 2026-S44 Pet"; botão "Desafiar um amigo (link)" copia o link.
+- Harness `sim/stress.mjs`: 13 estratégias extremas em 3 segmentos. Última rodada: 1.170 partidas, 0 exceções, 0 invariantes violadas.

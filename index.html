@@ -185,9 +185,7 @@ details.casc .tbl{margin-top:6px}
 .mode.av{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;font-weight:600;font-size:.9rem}
 .topbar .brand .spr{margin-right:4px}
 @media (prefers-reduced-motion:no-preference){.card,.mode,button{transition:border-color .15s,background .15s}}
-</style>
-</head>
-<body>
+</style></head><body>
 
 <div id="app"></div>
 
@@ -274,7 +272,12 @@ const RADAR=[{name:'Expressa',limit:50000,cost:0,req:0},{name:'Limitada',limit:1
 const WAREHOUSES=[{name:'Só o escritório',cap:12,rent:0,desc:'12 m³ de sobra na sala. O que passar vai pra armazém 3PL a R$ 150/m³ por mês.'},
                   {name:'Galpão P',cap:80,rent:4000,desc:'80 m³. Cabe um LCL grande ou um FCL apertado.'},
                   {name:'Galpão G',cap:250,rent:9000,desc:'250 m³. Vários contêineres e estoque pra Black Friday.'}];
-const FIXED_COST=5000, GIRO_RATE=0.032, GIRO_MAX=80000, FINIMP_RATE=0.013, FINIMP_MAX=150000, MAINO_FEE=990, THREEPL=150;
+const FIXED_COST=5000, GIRO_RATE=0.032, GIRO_MAX=80000, FINIMP_RATE=0.02, FINIMP_MAX=150000, MAINO_FEE=990, THREEPL=150;
+// Link de desafio: ?d=<semana>&seg=<segmento> abre o mesmo mundo (dólar, eventos, procura) de quem mandou o link.
+const LOC=typeof location!=='undefined'?location:{hostname:'',search:'',origin:'',pathname:''};
+const GAME_URL=/github\.io$|maino\.com\.br$/.test(LOC.hostname)?LOC.origin+LOC.pathname:'https://edusferreira.github.io/importtycoon/';
+const Q=typeof URLSearchParams!=='undefined'?new URLSearchParams(LOC.search):{get:()=>null};const CHAL={week:/^\d{4}-S\d{2}$/.test(Q.get('d')||'')?Q.get('d'):null,seg:Q.get('seg')||null,applied:false};
+const challengeURL=s=>`${GAME_URL}?d=${s.seedStr.split(':')[1]}&seg=${s.seg}`;
 // Equipe: analista de Comex em três senioridades. Quanto mais sênior, mais desconto no preço do fornecedor e no frete; o sênior ainda conduz a negociação sozinho.
 const ANALISTAS=[null,
  {lv:1,name:'Analista de Comex júnior',short:'analista júnior',fee:600,disc:0.03,freight:0.05,desc:'Acompanha pedidos e cotações: 3% a menos no preço do fornecedor e 5% a menos no frete.'},
@@ -287,7 +290,9 @@ const CONSULTORIAS=[null,
  {lv:2,nivel:'Intermediária',name:'Porto & Cia Consultoria',who:'Renata Lima',short:'consultoria intermediária',fee:3000,err:0.40,errM:0.20,desc:'Renata foi analista de trading por dez anos e cuida de uma carteira de PMEs importadoras. Acerta 60% das recomendações; com o Mainô Plano Gestão, 80%.'},
  {lv:3,nivel:'Avançada',name:'Horizonte Global Consultoria',who:'Marcos Veiga',short:'consultoria avançada',fee:4500,err:0.20,errM:0.10,desc:'Marcos é despachante aduaneiro e ex-gerente de Comex de indústria. Acerta 80% das recomendações; com o Mainô Plano Gestão, 90%.'},
 ];
-const conLv=s=>(s.consult&&s.consult.lv)||0;const conFee=s=>conLv(s)?CONSULTORIAS[conLv(s)].fee:0;
+const conLv=s=>(s.consult&&s.consult.lv)||0;
+// Teto da consultoria: a mensalidade sobe 15% a cada mês de contrato (trocar não zera) e o plano cobre só 70% da procura prevista, para o 'Aplicar' todo mês não vencer quem joga.
+const CON_ESC=0.15, CON_COVER=0.7;const conMonths=s=>s.consult&&s.consult.since?Math.max(0,s.turn-s.consult.since):0;const conFee=s=>conLv(s)?Math.round(CONSULTORIAS[conLv(s)].fee*(1+CON_ESC*conMonths(s))/100)*100:0;
 // Potencializada pelo Mainô: com o Plano Gestão o consultor trabalha com margem e demanda exata e usa a taxa de erro menor (errM); com qualquer Mainô ERP a NCM nunca sai errada.
 const conErr=s=>conLv(s)?(sysLv(s)>=3?CONSULTORIAS[conLv(s)].errM:CONSULTORIAS[conLv(s)].err):0;
 const anaLv=s=>s.up.analista||(s.up.buyer?3:0);const anaFee=s=>anaLv(s)?ANALISTAS[anaLv(s)].fee:0;const anaDisc=s=>anaLv(s)?ANALISTAS[anaLv(s)].disc:0;const anaFreight=s=>anaLv(s)?ANALISTAS[anaLv(s)].freight:0;
@@ -305,7 +310,9 @@ const nextLevel=s=>LEVELS.find(L=>L.xp>xp(s))||null;
 const giroRate=s=>level(s).n>=3?0.025:GIRO_RATE;
 const moqOf=(s,sup)=>Math.round(sup.moq*(level(s).n>=2?0.75:1));
 const MKT_MAX=40000, MKT_K=6000, MKT_LIFT=1.0;
-const mktLift=b=>MKT_LIFT*b/(b+MKT_K);           // retorno decrescente: R$ 6 mil = +50%, R$ 18 mil = +75%
+const mktLift=b=>MKT_LIFT*b/(b+MKT_K);
+const mktWarn=s=>{if(!(s.mkt>0))return '';if(PRODUCTS.some(p=>stk(s,p.id).qty>0))return '';return s.ships.length?' · <span class="warn">⚠ Sem estoque em mãos: a carga ainda está a caminho. Marketing agora só gera cliente frustrado.</span>':' · <span class="warn">⚠ Sem estoque nem carga a caminho: marketing seria dinheiro jogado fora.</span>';};
+const mktInfo=s=>`<b>${fmt(s.mkt||0)}/mês</b> · demanda <b>+${Math.round(mktLift(s.mkt||0)*100)}%</b>${mktWarn(s)}`;           // retorno decrescente: R$ 6 mil = +50%, R$ 18 mil = +75%
 const brand=s=>s.brand==null?1:s.brand;            // confiança da marca (0,4 a 1,0) multiplica a demanda
 const FILIAL={name:'Filial em Santa Catarina (TTD 409)',setup:35000,rent:3500,lead:1,cap:80,icmsEfetivo:0.026,reqImports:2,reqRadar:1};
 const filialOk=s=>!!(s.filial&&s.filial.status==='ok');
@@ -406,7 +413,7 @@ const radarUsed=s=>s.radar.used;
 
 function newGame(mode,nick,avatar,seg){
   applySegment(seg||'eletronicos');ui.buy={pid:PRODUCTS[0].id,sid:'guangzhou',qty:300,modal:'lcl',lock:false,seguro:true,insp:true};
-  const seedStr=mode==='semanal'?'semanal:'+isoWeek(new Date())+':'+SEG.id:'sandbox:'+Date.now();
+  const seedStr=mode==='semanal'?'semanal:'+(CHAL.week||isoWeek(new Date()))+':'+SEG.id:'sandbox:'+Date.now();
   S={mode,nick:nick||'Importador',seedStr,rng:hash(seedStr),rngW:hash(seedStr+':mundo'),turn:1,cash:START_CASH,dollar:5.20,dHist:[5.20],
      radar:{level:0,used:0},wh:0,sys:0,seg:SEG.id,lic:{},up:{maino:false,analista:0},tax:{iiExtra:0,pc:0.1175,icms:0.18},
      stock:Object.fromEntries(PRODUCTS.map(p=>[p.id,{qty:0,avg:0,price:p.market,channel:'ambos',ncm:null,ncmOk:null}])),
@@ -430,17 +437,20 @@ function cascade(s,sh,rate,canal){
   const fobBRL=sh.fobUSD*rate, frete=sh.freight, seguro=sh.seguro?Math.round(fobBRL*0.005):0;
   const capatazia=M.capatazia;
   const va=fobBRL+frete+seguro+capatazia;
-  const pr=P(sh.pid), iiRate=pr.ii+t.iiExtra;
-  const ii=va*iiRate, ipi=(va+ii)*pr.ipi, pc=va*t.pc;
+  const pr=P(sh.pid);const ncmWrong=sh.ncmOk===false, ncmCaught=ncmWrong&&canal==='vermelho';
+  // NCM errada declara alíquotas menores (II −5 p.p., IPI −3 p.p.). No canal vermelho a Receita reclassifica: cobra as alíquotas certas e multa de ofício de 3× a diferença (piso R$ 8 mil).
+  const iiRate=pr.ii+t.iiExtra-(ncmWrong&&!ncmCaught?0.05:0), ipiRate=Math.max(0,pr.ipi-(ncmWrong&&!ncmCaught?0.03:0));
+  const ii=va*iiRate, ipi=(va+ii)*ipiRate, pc=va*t.pc;
+  const ncmDiff=ncmCaught?Math.round(va*0.05+(va+ii)*Math.min(0.03,pr.ipi)):0;
   const afrmm=M.afrmm?frete*0.08:0, siscomex=sh.modal==='courier'?0:154.23;
   const armBase=sh.modal==='courier'?0:800, armExtra=canal==='amarelo'?1200:canal==='vermelho'?3000:0;
   const armazenagem=(armBase+armExtra*(sysLv(s)>=3?0.5:1))*(s.flags.portoX2===s.turn&&sysLv(s)<3?2:1);
   const ttd=filialOk(s);const baseIcms=(va+ii+ipi+pc+afrmm+siscomex)/(1-t.icms), icms=ttd?0:baseIcms*t.icms;
   const despachante=sh.modal==='courier'?500:(hasMaino(s)?1000:1500), freteInt=sh.modal==='courier'?0:600, inspecao=sh.insp?INSP_COST:0;
-  const multa=canal==='vermelho'&&sh.ncmOk===false?5000:0;
+  const multa=ncmCaught?Math.max(8000,ncmDiff*3):0;
   const rows=[['Mercadoria (FOB em R$)',fobBRL],['Frete internacional',frete],['Seguro de carga',seguro],['Capatazia / THC (integra o VA, STJ Tema 1014)',capatazia],['Valor aduaneiro',va,'sub'],
-   [`II ${pct(iiRate)}`,ii],[`IPI ${pct(pr.ipi)}`,ipi],['PIS/COFINS-importação 11,75%',pc],[ttd?'ICMS diferido no desembaraço (TTD 409 SC)':'ICMS 18% SP (por dentro)',icms,ttd?'sub':undefined],
-   ['AFRMM 8% do frete marítimo',afrmm],['Taxa Siscomex (DUIMP + 1 adição)',siscomex],['Armazenagem',armazenagem],['Despachante',despachante],['Frete interno',freteInt],['Inspeção pré-embarque',inspecao],['Multa por declaração inexata (NCM)',multa]];
+   [`II ${pct(iiRate)}`,ii],[`IPI ${pct(ipiRate)}`,ipi],['PIS/COFINS-importação 11,75%',pc],[ttd?'ICMS diferido no desembaraço (TTD 409 SC)':'ICMS 18% SP (por dentro)',icms,ttd?'sub':undefined],
+   ['AFRMM 8% do frete marítimo',afrmm],['Taxa Siscomex (DUIMP + 1 adição)',siscomex],['Armazenagem',armazenagem],['Despachante',despachante],['Frete interno',freteInt],['Inspeção pré-embarque',inspecao],['Reclassificação de NCM: multa de ofício (3× a diferença de tributos)',multa]];
   const total=fobBRL+frete+seguro+ii+ipi+pc+icms+afrmm+siscomex+capatazia+armazenagem+despachante+freteInt+multa+inspecao;
   return {rows:rows.filter(r=>r[1]>0||r[2]).map(r=>r[2]===undefined?[r[0],r[1]]:r),total,va,taxes:ii+ipi+pc+icms+afrmm+siscomex,fobBRL};
 }
@@ -497,7 +507,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
     if(sh.scam){sh.done=true;s.m.other+=sh.sinalBRL||0;report.arrivals.push({sh,scam:true});log(s,`Golpe: ${sup.name} sumiu com o sinal de ${fmt(sh.sinalBRL||0)}. A carga de ${sh.qty} ${P(sh.pid).name} nunca embarcou.`);const r=rel(s,sup.id);r.blockedUntil=99;continue;}
     if(!licOk(s,sh.pid)){sh.eta=s.turn+1;sh.heldLic=true;s.cash-=3000;s.m.other+=3000;report.arrivals.push({sh,heldLic:true});log(s,`Carga de ${P(sh.pid).name} retida na alfândega: sem ${P(sh.pid).anu.org}. Armazenagem de R$ 3.000.`);continue;}
     if(!sh.canal){
-      let pV=0.10+(SEG.id==='beleza'?0.05:0),pA=0.18;if(sh.ncmOk===false)pV+=0.15;if(s.imports===0)pA+=0.10;if(hasMaino(s)){pV*=0.5;pA*=0.7;}if(sysLv(s)>=4)pA*=0.5;
+      let pV=0.10+(SEG.id==='beleza'?0.05:0),pA=0.18;if(sh.ncmOk===false)pV+=0.30;if(s.imports===0)pA+=0.10;if(hasMaino(s)){pV*=0.5;pA*=0.7;}if(sysLv(s)>=4)pA*=0.5;
       const r=rand();sh.canal=r<pV?'vermelho':r<pV+pA?'amarelo':'verde';
       if(sh.canal==='vermelho'){s.stats.vermelho++;if(!sh.held){sh.held=true;sh.eta=s.turn+1;report.arrivals.push({sh,held:true});continue;}}
     }
@@ -550,6 +560,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
   }
   // modais: um único fechamento com tudo; só decisão (evento com escolha) e fim de jogo abrem janela própria, depois
   const avisos=[],dicas=[];
+  if((report.m.mkt||0)>0&&report.m.units===0)avisos.push({icon:'alerta',cls:'bad',title:'Marketing sem estoque',text:`${fmt(report.m.mkt)} em marketing e nenhuma unidade vendida: sem mercadoria em mãos, a procura virou cliente frustrado. Zere o marketing até a carga chegar.`});
   for(const n of notices){avisos.push(n.aviso);if(n.dica)dicas.push(n.dica);}
   if(s.consult&&s.consult.applied===s.turn-1&&s.consult.errDesc){const C=CONSULTORIAS[conLv(s)];avisos.push({icon:'alerta',cls:'warn',title:`${C.who} errou a mão no plano de ${monthName(s.turn-1)}`,text:s.consult.errDesc});}
   if(s.consult){s.consult.errDesc=null;}
@@ -572,7 +583,7 @@ const d=demandFor(s,p.id,st.price,st.channel,noise);
 function collectArrivals(report,avisos,dicas){report.landed=[];
   for(const a of report.arrivals){const p=P(a.sh.pid),sup=SUP(a.sh.sid);
     if(a.scam){avisos.push({icon:'alerta',cls:'bad',title:`Golpe: ${sup.name} sumiu com o sinal`,text:`Sinal de <b>${fmt(a.sh.sinalBRL||0)}</b> perdido. A carga de ${a.sh.qty} ${p.name} nunca embarcou.`});dicas.push(a.sh.insp?'Mesmo com inspeção contratada, a fábrica não existia quando o inspetor chegou: o sinal já tinha ido. Amostra e auditoria antes do sinal reduzem isso, mas fornecedor muito barato é risco por definição.':'Fornecedor barato, sem histórico e sem inspeção é a receita clássica do golpe. Amostra, inspeção e pagamento 30/70 custam pouco perto de um sinal perdido.');continue;}
-    if(a.heldLic){avisos.push({icon:'officer',cls:'bad',title:`Carga retida: ${p.name} sem ${p.anu.org}`,text:`${a.sh.qty} ${p.name} ficam na alfândega mais um mês, com <b>R$ 3.000</b> de armazenagem.`});dicas.push('Certificação não é licença de importação, mas sem ela a mercadoria não sai da zona primária. Solicite assim que decidir o produto.');continue;}
+    if(a.heldLic){avisos.push({icon:'officer',cls:'bad',title:`Carga retida: ${p.name} sem ${p.anu.org}`,text:`${a.sh.qty} ${p.name} ficam na alfândega mais um mês, com <b>R$ 3.000</b> de armazenagem. Para liberar, solicite a ${p.anu.label.split(' (')[0]} na sala Comex (${fmt(p.anu.cost)}, ${p.anu.lead} ${p.anu.lead>1?'meses':'mês'}).`});dicas.push('Certificação não é licença de importação, mas sem ela a mercadoria não sai da zona primária. Solicite assim que decidir o produto.');continue;}
     if(a.held){avisos.push({icon:'officer',cls:'warn',title:`Canal vermelho: ${p.name}`,text:`${a.sh.qty} ${p.name} em conferência física. Liberação no mês que vem, com armazenagem extra${a.sh.ncmOk===false?' e <b>reclassificação com multa</b>':''}.`});dicas.push(a.sh.ncmOk===false?'A NCM declarada não bate com o produto. A Receita reclassifica de ofício e aplica multa por declaração inexata (a antiga multa de 1% do valor aduaneiro foi revogada pela LC 227/2026). Com um sistema especializado, a classificação é conferida antes do registro da DUIMP.':'Sem histórico ou com documentação fraca, a chance de vermelho sobe. Nada errado na NCM: só paciência e armazenagem.');continue;}
     report.landed.push({p,sup,sh:a.sh,c:a.c});
     if(a.sh.incident){avisos.push({icon:'box',cls:'bad',title:`Lote de ${p.name} com problema`,text:`Sem inspeção: ${a.sh.incident.desc}. <b>${a.sh.incident.perdidas} unidades perdidas</b>, pagas integralmente.${a.sh.incident.brandHit?` Confiança da marca caiu ${Math.round(a.sh.incident.brandHit*100)} pontos (agora ${Math.round(brand(S)*100)}%).`:''}`});dicas.push('Inspeção pré-embarque custa R$ 1.800 por embarque e confere quantidade, modelo e qualidade antes de embarcar. Sai mais barato que um lote ruim e as avaliações que ele deixa.');}
@@ -650,15 +661,15 @@ function valuation(s){const estoque=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty*stk
   return {nav:Math.round(nav),cf12,mult,future,valor:broke?0:Math.max(0,Math.round(nav+future)),broke};}
 function queueGameOver(broke){const s=S;s.over=true;const pat=patrimonio(s);const rev=s.hist.reduce((a,h)=>a+h.m.rev,0);const sl=selos(s,broke);const V=valuation(s);const pctV=Math.round((V.valor/START_CASH-1)*100);
   const SITE='https://intelligence.maino.com.br/';
-  const txt=broke?`Quebrei no mês ${s.turn} jogando ImportTycoon (${SEG.name}, ${SEG.level}). Comecei com R$ 150 mil e a empresa acabou valendo zero. Você sobrevive aos 12 meses? Jogue: ${SITE} #ImportTycoon`:`Comecei com R$ 150 mil e em 12 meses minha importadora vale ${fmt(V.valor)} (${pctV>=0?'+':''}${pctV}%) no ImportTycoon, em ${SEG.name}, nível ${SEG.level}. Faturamento ${fmt(rev)} em ${s.imports} importações. Você faz melhor? Jogue: ${SITE} #ImportTycoon`;
+  const txt=broke?`Quebrei no mês ${s.turn} jogando ImportTycoon (${SEG.name}, ${SEG.level}). Comecei com R$ 150 mil e a empresa acabou valendo zero. Você sobrevive aos 12 meses? Mesmo desafio, mesmo dólar: ${challengeURL(s)} · Importe de verdade: ${SITE} #ImportTycoon`:`Comecei com R$ 150 mil e em 12 meses minha importadora vale ${fmt(V.valor)} (${pctV>=0?'+':''}${pctV}%) no ImportTycoon, em ${SEG.name}, nível ${SEG.level}. Faturamento ${fmt(rev)} em ${s.imports} importações. Você faz melhor? Mesmo desafio, mesmo dólar, mesmos eventos: ${challengeURL(s)} · Importe de verdade: ${SITE} #ImportTycoon`;
   queue.push({noClose:true,icon:broke?'alerta':'office',title:broke?'Faliu. O banco encerrou a conta.':'Fim do ano fiscal',html:`
    <div class="kpis"><div class="kpi"><b class="${V.valor>=START_CASH?'good':'bad'}">${fmt(V.valor)}</b><span>Sua empresa vale</span></div><div class="kpi"><b>${fmt(V.nav)}</b><span>Patrimônio líquido</span></div><div class="kpi"><b>${fmt(rev)}</b><span>Faturamento</span></div></div>
-   <p class="small muted">Começou com ${fmt(START_CASH)}: ${V.valor>=START_CASH?'+'+pctV+'%':pctV+'%'}. ${broke?'Empresa falida vale zero.':`Valor = patrimônio líquido ${fmt(V.nav)} + geração de caixa de ${fmt(V.cf12)}/ano (média dos últimos 3 meses) × ${String(V.mult).replace('.',',')}${brand(s)<1?' (múltiplo 2,5 ajustado pela confiança da marca de '+Math.round(brand(s)*100)+'%)':''}.`} Quem jogar ${SEG.name} no Desafio ${s.seedStr.split(':')[1]} enfrentou exatamente as mesmas condições: compare os prints.</p>
+   <p class="small muted">Começou com ${fmt(START_CASH)}: ${V.valor>=START_CASH?'+'+pctV+'%':pctV+'%'}. ${broke?'Empresa falida vale zero.':`Valor = patrimônio líquido ${fmt(V.nav)} + geração de caixa de ${fmt(V.cf12)}/ano (média dos últimos 3 meses) × ${String(V.mult).replace('.',',')}${brand(s)<1?' (múltiplo 2,5 ajustado pela confiança da marca de '+Math.round(brand(s)*100)+'%)':''}.`} Quem jogar ${SEG.name} no Desafio ${s.seedStr.split(':')[1]} enfrentou exatamente as mesmas condições: compare os prints. Mande o link do desafio para alguém jogar o mesmo mundo.</p>
    <div class="selos">${sl.map(x=>`<span class="selo">${x}</span>`).join('')||'<span class="muted small">Nenhum selo desta vez.</span>'}</div>
    <div class="share"><h3>Seu placar é este print</h3>
    <img id="card" alt="Card com o resultado da partida" style="width:100%;max-width:420px;height:auto;border-radius:12px;display:block;margin:6px auto">
    <div class="row" style="justify-content:center;margin-top:8px"><button class="primary big" id="shareWa">Compartilhar no WhatsApp</button></div>
-   <div class="row" style="justify-content:center;margin-top:6px"><button id="saveImg">Salvar imagem</button><button id="copyImg">Copiar imagem</button><button id="copyTxt">Copiar texto</button></div>
+   <div class="row" style="justify-content:center;margin-top:6px"><button id="saveImg">Salvar imagem</button><button id="shareLink">Desafiar um amigo (link)</button><button id="copyImg">Copiar imagem</button><button id="copyTxt">Copiar texto</button></div>
    <p id="shareMsg" class="small muted" style="text-align:center;margin-top:6px">No celular, você também pode segurar a imagem para salvar ou enviar.</p></div>
    <div class="mia-note"><div class="av">${spr('office',2)}</div><div>Na sua partida, cada chegada teve risco de erro de NF-e e você só soube da alíquota ao registrar a DUIMP. Na vida real, a Mainô gera a NF-e de importação a partir da DUIMP ou do XML da DI em 2 minutos e avisa antes de a norma mudar.<br><a class="cta" style="margin-top:8px" href="https://www.maino.com.br" target="_blank" rel="noopener">Quero importar de verdade</a></div></div>
    `,
@@ -686,7 +697,7 @@ function buildCard(pat,rev,sl,broke){const s=S;const W=1080,H=1080;const V=valua
   // rodapé
   drawSpr(x,'ship',W-56-32*5-170,H-150,5,true);drawSpr(x,'container',W-56-16*5-370,H-80,4);drawSpr(x,'containerG',W-56-16*5-300,H-80,4);
   const LC=6,LN=LOGO8.length;x.fillStyle='#fff';LOGO8.forEach((row,j)=>{[...row].forEach((ch,i)=>{if(ch==='#')x.fillRect(W-56-LN*LC+i*LC,H-56-LN*LC+j*LC,LC,LC);});});
-  x.fillStyle='#fff';x.font='800 34px "Barlow Condensed", Impact, sans-serif';x.fillText('MAINÔ: A ÚNICA EM GESTÃO E COMEX',56,H-76);x.fillStyle='#9FE8D3';x.font='600 24px Barlow, sans-serif';x.fillText('#ImportTycoon  ·  intelligence.maino.com.br  ·  Você faz melhor?',56,H-36);
+  x.fillStyle='#fff';x.font='800 34px "Barlow Condensed", Impact, sans-serif';x.fillText('MAINÔ: A ÚNICA EM GESTÃO E COMEX',56,H-76);x.fillStyle='#9FE8D3';x.font='600 24px Barlow, sans-serif';x.fillText(`#ImportTycoon  ·  Desafio ${S.seedStr.split(':')[1]} ${SEG.name}  ·  intelligence.maino.com.br`,56,H-36);
   return c;
 }
 function setupShare(pat,rev,sl,broke,txt){const c=buildCard(pat,rev,sl,broke);const img=$('#card');if(!img)return;const url=c.toDataURL('image/png');img.src=url;
@@ -698,6 +709,7 @@ function setupShare(pat,rev,sl,broke,txt){const c=buildCard(pat,rev,sl,broke);co
     let copiado=false;try{await copyImage();copiado=true;}catch(e){}
     const a=document.createElement('a');a.href='https://wa.me/?text='+encodeURIComponent(txt);a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
     msg(copiado?'Imagem copiada e WhatsApp aberto com o texto: cole a imagem na conversa.':'WhatsApp aberto com o texto. Salve a imagem (ou segure nela no celular) e anexe na conversa.');};
+  const bl=$('#shareLink');if(bl)bl.onclick=async()=>{const link=challengeURL(S);try{if(navigator.share&&/Mobi|Android/i.test(navigator.userAgent)){await navigator.share({title:'ImportTycoon',text:txt});msg('Compartilhado.');return;}}catch(e){if(e&&e.name==='AbortError')return;}try{await navigator.clipboard.writeText(link);msg('Link do desafio copiado: '+link);}catch(e){msg('Link do desafio: '+link);}};
   $('#saveImg').onclick=async()=>{const blob=await blobP;let d=null;try{d=window.claude&&claude.use?await claude.use('downloads'):null;}catch(e){}
     if(d){try{await d.save({filename:'importtycoon-resultado.png',data:blob});msg('Imagem salva.');}catch(e){msg(e&&e.code==='declined'?'Salvamento cancelado.':'Não deu pra salvar aqui. Segure a imagem no celular ou use Copiar imagem.');}return;}
     const a=document.createElement('a');a.href=url;a.download='importtycoon-resultado.png';document.body.appendChild(a);a.click();a.remove();msg('Se o download não começou, segure ou clique com o botão direito na imagem e salve.');};
@@ -1440,19 +1452,19 @@ function renderVendas(){const s=S;
    <div class="panel"><h3>Projeção de estoque mês a mês ${tip('Quanto vai sobrar de cada produto no fim de cada mês se você não comprar mais nada: estoque de hoje menos a venda prevista, mais o que já está a caminho. Use junto com o lead time: marítimo chega em 2 meses, aéreo em 1.')}</h3>${stockProjHTML(s)}</div>
    <div class="panel"><h3>Marketing e confiança da marca ${tip('<b>Marketing</b> aumenta a demanda de todos os produtos com retorno decrescente: R$ 6 mil dão +50%, R$ 18 mil dão +75%, teto de +100%. Cobrado no fechamento.<br><b>Confiança da marca</b> multiplica a demanda. Cai até 10 pontos por mês quando mais de 20% da demanda fica sem estoque (piso de 60%), 8 pontos quando um lote chega com defeito e 4 quando chega fora da especificação; sobe 10 pontos por mês em que você atende mais de 90%. Marketing sem estoque destrói confiança.')}</h3>
    <div class="row" style="margin-top:8px;align-items:flex-start"><div style="flex:1;min-width:240px"><label class="field">Orçamento de marketing por mês<input id="mkt" type="range" min="0" max="${MKT_MAX}" step="1000" value="${s.mkt||0}" style="width:100%"></label>
-   <p class="small" style="margin-top:4px"><b>${fmt(s.mkt||0)}/mês</b> · demanda <b>+${Math.round(mktLift(s.mkt||0)*100)}%</b></p></div>
+   <p class="small" id="mktInfo" style="margin-top:4px">${mktInfo(s)}</p></div>
    <div style="flex:1;min-width:220px"><div class="small muted" style="text-transform:uppercase;letter-spacing:.06em">Confiança da marca</div><div class="bar ${brand(s)<0.8?'hot':''}" style="margin-top:6px"><i style="width:${Math.round(brand(s)*100)}%"></i></div><p class="small" style="margin-top:4px"><b>${Math.round(brand(s)*100)}%</b> da demanda potencial${brand(s)<1?' · <span class="warn">clientes decepcionados</span>':''}</p></div></div>
    ${(()=>{const tot=PRODUCTS.reduce((a,p)=>{const st=stk(s,p.id);if(!(st.avg>0||st.qty>0))return a;const d=demandFor(s,p.id,st.price,st.channel,1);return a+Math.round(d.mp)+Math.round(d.b2b);},0);const est=PRODUCTS.reduce((a,p)=>a+stk(s,p.id).qty,0);return tot>est*1.15&&tot>0?`<p class="warn small" style="margin-top:6px">Atenção: a demanda prevista para este mês é de ${tot} unidades e você tem ${est} em estoque. Cada cliente que não encontra o produto reduz a confiança da marca.</p>`:'';})()}
    </div>
    ${s.recv.length?`<div class="panel"><h3>A receber (B2B)</h3><div class="tbl"><table>${s.recv.map(r=>`<tr><td>${r.p}</td><td class="n">${fmt(r.amount)}</td><td>vence em ${monthName(r.due)}</td></tr>`).join('')}</table></div></div>`:''}`;
-  const mk=$('#mkt');if(mk){mk.oninput=()=>{s.mkt=+mk.value;};mk.onchange=()=>{s.mkt=+mk.value;log(s,`Marketing ajustado para ${fmt(s.mkt)}/mês.`);renderGame();};}
+  const mk=$('#mkt');if(mk){mk.oninput=()=>{s.mkt=+mk.value;const w=$('#mktInfo');if(w)w.innerHTML=mktInfo(s);};mk.onchange=()=>{s.mkt=+mk.value;log(s,`Marketing ajustado para ${fmt(s.mkt)}/mês.`);renderGame();};}
   document.querySelectorAll('[data-price]').forEach(e=>e.onchange=()=>{const p=P(e.dataset.price);const v=Math.max(1,Math.round(+e.value)||1);stk(s,e.dataset.price).price=v;log(s,`Preço de ${p.name} ajustado para ${fmt(v)}.`);renderGame();});
   document.querySelectorAll('[data-ch]').forEach(e=>e.onchange=()=>{stk(s,e.dataset.ch).channel=e.value;renderGame();});
 }
 
 /* ===================== CONSULTORIA ===================== */
-function contratarConsultoria(lv){const C=CONSULTORIAS[lv];if(!C||lv===conLv(S))return;const cur=conLv(S);confirmar({icon:'sup'+lv,title:`${cur?'Trocar para':'Contratar'} ${C.name} por ${fmt(C.fee)}/mês?`,yes:cur?'Trocar':'Contratar',onYes:()=>doConsultoria(lv),html:`<p><b>${C.who}</b>, consultoria ${C.nivel.toLowerCase()}. ${C.desc}</p><p class="small muted">Abre a sala Consultoria com o plano de cada mês e o botão Aplicar. Não dá bônus; custo fixo mensal até o fim do ano${cur?`, no lugar dos ${fmt(CONSULTORIAS[cur].fee)} atuais`:''}.</p>`});}
-function doConsultoria(lv){const C=CONSULTORIAS[lv];ensureSnap();pushCmd({t:'consultoria',lv,desc:`${conLv(S)?'Trocou para':'Contratou'} ${C.name} (${fmt(C.fee)}/mês)`,custo:0});S.consult={lv,errTurn:null,err:null,errDesc:null,applied:null};log(S,`${C.name} contratada: ${C.who} monta o plano do mês na sala Consultoria.`);renderGame();}
+function contratarConsultoria(lv){const C=CONSULTORIAS[lv];if(!C||lv===conLv(S))return;const cur=conLv(S);confirmar({icon:'sup'+lv,title:`${cur?'Trocar para':'Contratar'} ${C.name} por ${fmt(C.fee)}/mês?`,yes:cur?'Trocar':'Contratar',onYes:()=>doConsultoria(lv),html:`<p><b>${C.who}</b>, consultoria ${C.nivel.toLowerCase()}. ${C.desc}</p><p class="small muted">A mensalidade sobe 15% a cada mês de contrato; trocar de consultoria não zera a contagem.</p><p class="small muted">Abre a sala Consultoria com o plano de cada mês e o botão Aplicar. Não dá bônus; custo fixo mensal até o fim do ano${cur?`, no lugar dos ${fmt(CONSULTORIAS[cur].fee)} atuais`:''}.</p>`});}
+function doConsultoria(lv){const C=CONSULTORIAS[lv];ensureSnap();pushCmd({t:'consultoria',lv,desc:`${conLv(S)?'Trocou para':'Contratou'} ${C.name} (${fmt(C.fee)}/mês)`,custo:0});S.consult={lv,errTurn:null,err:null,errDesc:null,applied:null,since:(S.consult&&S.consult.since)||S.turn};log(S,`${C.name} contratada: ${C.who} monta o plano do mês na sala Consultoria.`);renderGame();}
 // Plano do mês: o que um bom gestor faria com a informação da tela. Mesma regra para os três níveis; o que muda é a chance de errar.
 function buildPlan(s){const C=CONSULTORIAS[conLv(s)];if(!C)return null;
   if(s.consult.errTurn!==s.turn){s.consult.errTurn=s.turn;const kinds=hasMaino(s)?['qty','price','modal','mkt','skip','cheap']:['qty','price','modal','mkt','ncm','skip','cheap'];s.consult.err=rand()<conErr(s)?kinds[randIdx(kinds.length)]:null;}
@@ -1468,6 +1480,7 @@ function buildPlan(s){const C=CONSULTORIAS[conLv(s)];if(!C)return null;
   plan.mkt=covs.length&&Math.min(...covs.map(c=>c.months))>=1.5&&s.cash>40000?MKT_K:0;plan.mktWhy=plan.mkt?'estoque cobre mais de 1,5 mês de venda em tudo: R$ 6 mil rendem +50% de procura':covs.length?'estoque curto: marketing agora só geraria frustração':'sem estoque: marketing seria dinheiro jogado fora';
   if(err==='mkt'){if(plan.mkt){plan.mkt=0;plan.mktWhy='segura o marketing este mês e preserva caixa';plan.errDesc='cortou o marketing justo quando havia estoque para vender';}else{plan.mkt=24000;plan.mktWhy='momento de acelerar: R$ 24 mil em marketing';plan.errDesc='torrou R$ 24 mil em marketing sem estoque para atender';}}
   for(const p of PRODUCTS){if(p.anu&&lic(s,p.id).status==='none'&&s.turn<=9)plan.licenses.push(p.id);}
+  plan.notes.push('Plano conservador: cobre cerca de 70% da procura prevista. Crescer além disso é decisão sua.');
   // compras
   const saveBuy={...ui.buy};const sup=err==='cheap'?(SUPPLIERS.find(f=>f.mult>1)||SUPPLIERS[2]):(SUPPLIERS.find(f=>f.mult===1)||SUPPLIERS[1]);const mon=i=>SEASON[(m+i)%12]/SEASON[m];const pseudos=[];let sinais=0;
   // cada pedido só entra se, com ele e os anteriores, a projeção de caixa do jogo (vendas, chegadas, fixos) nunca cair abaixo de uma reserva
@@ -1475,7 +1488,7 @@ function buildPlan(s){const C=CONSULTORIAS[conLv(s)];if(!C)return null;
   if(s.turn<=10)for(const p of PRODUCTS){if(p.anu&&!licOk(s,p.id))continue;const st=stk(s,p.id);const mk=marketPrice(s,p.id);const d=demandFor(s,p.id,mk,chan,1);const exact=Math.round(d.mp)+Math.round(d.b2b);const dem=sysLv(s)>=3?exact:Math.max(0,Math.round(exact*(1+((hash(s.seedStr+':'+s.turn+':'+p.id)%31)-15)/100)/50)*50); // sem o Plano Gestão o consultor estima a procura com ±15% de erro
     if(dem<=0)continue;
     const transit=s.ships.filter(x=>x.pid===p.id).reduce((a,x)=>a+x.qty,0);
-    const lead=k=>MODAIS[k].lead;const need=k=>{let t=0;for(let i=0;i<=lead(k);i++)t+=dem*mon(i);return Math.max(0,Math.round((t-st.qty-transit)/10)*10);};
+    const lead=k=>MODAIS[k].lead;const need=k=>{let t=0;for(let i=0;i<=lead(k);i++)t+=dem*mon(i);return Math.max(0,Math.round((t*CON_COVER-st.qty-transit)/10)*10);};
     // custo por unidade na quantidade que de fato seria pedida (os custos fixos do embarque pesam em pedido pequeno)
     const est=k=>{if(need(k)<=0)return Infinity;let q=Math.max(need(k),moqOf(s,sup));for(let i=0;i<5&&q>=moqOf(s,sup);i++){ui.buy={pid:p.id,sid:sup.id,qty:q,modal:k,lock:false,seguro:k!=='aereo',insp:sup.rel<0.9};const r=buyPreview();if(!r.err)return r.c.total/r.sh.qty;q=Math.floor(q*0.6/10)*10;}return Infinity;};
     const uA=est('aereo'),uL=est('lcl');if(uA===Infinity&&uL===Infinity)continue;
@@ -1540,8 +1553,8 @@ function renderInvestir(){const s=S;const nx=RADAR[s.radar.level+1];const lim=RA
    <h3 style="margin-top:14px">Equipe ${tip('Analista de Comex: desconto no preço do fornecedor e no frete, crescente com a senioridade. O sênior conduz a negociação sozinho, sempre no melhor desconto. Custo fixo mensal até o fim do ano; dá para promover, não para rebaixar.')}</h3><div class="cards" style="margin-top:8px">
     ${ANALISTAS.slice(1).map(A=>`<div class="card ${anaLv(s)===A.lv?'on':''}">${spr('sup2',2)}<h3>${A.name} ${tip(A.desc)}</h3><div class="m">${fmt(A.fee)}/mês · -${Math.round(A.disc*100)}% preço · -${Math.round(A.freight*100)}% frete</div>${anaLv(s)===A.lv?'<div class="m good" style="margin-top:8px">na equipe</div>':anaLv(s)>A.lv?'<div class="m muted" style="margin-top:8px">abaixo do atual</div>':`<button style="margin-top:8px" data-ana="${A.lv}">${anaLv(s)?'Promover':'Contratar'}</button>`}</div>`).join('')}
    </div>
-   <h3 style="margin-top:14px">Consultoria de Comex ${tip('Não dá bônus: abre a sala Consultoria, onde o consultor monta o plano do mês (o que comprar, por quanto vender, quanto investir em marketing, que anuência pedir) e você aplica tudo com um clique, ou segue só o que quiser. Consultor erra: quanto mais avançada a consultoria, menos. Com o Mainô ERP Plano Gestão ela trabalha com margem e demanda exata e acerta muito mais (70, 80 e 90% em vez de 45, 60 e 80%); com qualquer Mainô ERP a NCM nunca sai errada. Custo fixo mensal até o fim do ano; dá para trocar.')}</h3><div class="cards" style="margin-top:8px">
-    ${CONSULTORIAS.slice(1).map(C=>`<div class="card ${conLv(s)===C.lv?'on':''}">${spr('sup'+C.lv,2)}<h3>${C.nivel} · ${C.who} ${tip(C.desc)}</h3><div class="m">${C.name}</div><div class="m">${fmt(C.fee)}/mês · acerta ${Math.round((1-(sysLv(s)>=3?C.errM:C.err))*100)}%${sysLv(s)>=3?' com Mainô Gestão':' ('+Math.round((1-C.errM)*100)+'% com Mainô Gestão)'}</div>${conLv(s)===C.lv?'<div class="m good" style="margin-top:8px">contratada</div>':`<button style="margin-top:8px" data-con="${C.lv}">${conLv(s)?'Trocar':'Contratar'}</button>`}</div>`).join('')}
+   <h3 style="margin-top:14px">Consultoria de Comex ${tip('A mensalidade sobe 15% a cada mês de contrato (trocar de consultoria não zera) e o plano cobre cerca de 70% da procura prevista: o resto é decisão sua. Não dá bônus: abre a sala Consultoria, onde o consultor monta o plano do mês (o que comprar, por quanto vender, quanto investir em marketing, que anuência pedir) e você aplica tudo com um clique, ou segue só o que quiser. Consultor erra: quanto mais avançada a consultoria, menos. Com o Mainô ERP Plano Gestão ela trabalha com margem e demanda exata e acerta muito mais (70, 80 e 90% em vez de 45, 60 e 80%); com qualquer Mainô ERP a NCM nunca sai errada. Custo fixo mensal até o fim do ano; dá para trocar.')}</h3><div class="cards" style="margin-top:8px">
+    ${CONSULTORIAS.slice(1).map(C=>`<div class="card ${conLv(s)===C.lv?'on':''}">${spr('sup'+C.lv,2)}<h3>${C.nivel} · ${C.who} ${tip(C.desc)}</h3><div class="m">${C.name}</div><div class="m">${fmt(conLv(s)===C.lv?conFee(s):C.fee)}/mês · acerta ${Math.round((1-(sysLv(s)>=3?C.errM:C.err))*100)}%${sysLv(s)>=3?' com Mainô Gestão':' ('+Math.round((1-C.errM)*100)+'% com Mainô Gestão)'}</div>${conLv(s)===C.lv?'<div class="m good" style="margin-top:8px">contratada</div>':`<button style="margin-top:8px" data-con="${C.lv}">${conLv(s)?'Trocar':'Contratar'}</button>`}</div>`).join('')}
    </div>
    <h3 style="margin-top:14px">Expansão ${tip('Santa Catarina, Espírito Santo e outros estados concedem TTDs que diferem o ICMS da importação e aplicam crédito presumido na saída. O custo de nacionalização cai bastante, mas exige estrutura real no estado e deixa de valer gradualmente com a Reforma Tributária (2029 a 2032).')}</h3><div class="cards" style="margin-top:8px"><div class="card ${filialOk(s)?'on':''}">${spr('office',2)}<h3>${FILIAL.name} ${tip(`ICMS da importação diferido no desembaraço; você paga carga efetiva de 2,6% nas vendas, em vez de 18% por dentro no custo. Soma ${FILIAL.cap} m³ de galpão. Exige ${FILIAL.reqImports} importações concluídas e Radar Limitada. Só compensa para quem importa mais de uns R$ 25 mil por mês: abaixo disso o custo fixo come a economia.`)}</h3><div class="m">${fmt(FILIAL.setup)} + ${fmt(FILIAL.rent)}/mês · pronta em ${FILIAL.lead} mês</div>${filialOk(s)?'<div class="m good" style="margin-top:8px">em operação</div>':s.filial&&s.filial.status==='setup'?'<div class="m warn" style="margin-top:8px">em implantação · opera em '+monthName(s.filial.ready)+'</div>':`<button class="primary" style="margin-top:8px" id="filial" ${s.imports<FILIAL.reqImports||s.radar.level<FILIAL.reqRadar||s.cash<FILIAL.setup?'disabled':''}>Abrir filial</button>${s.imports<FILIAL.reqImports||s.radar.level<FILIAL.reqRadar?'<div class="m muted" style="margin-top:6px">exige '+FILIAL.reqImports+' importações e Radar Limitada</div>':''}`}</div></div>
    <h3 style="margin-top:14px">Radar Siscomex ${tip('Habilitação da Receita para operar no Siscomex (IN RFB 1.984/2020). <b>Expressa</b> sai automática e limita US$ 50 mil CIF por semestre. <b>Limitada</b> vai a US$ 150 mil. <b>Ilimitada</b> depende da capacidade financeira estimada. Subir de modalidade custa consultoria e revisão da capacidade financeira, e exige importações concluídas. O limite renova em julho.')}</h3>
@@ -1614,9 +1627,11 @@ function showNext(){if(modalOpen||!queue.length)return;openModal(queue.shift());
 let startMode='semanal', startAvatar=0, startSeg='pet';
 function showStart(){
   let nick='';try{nick=localStorage.getItem('oimp.nick')||'';startAvatar=+(localStorage.getItem('oimp.avatar')||0)||0;startSeg=localStorage.getItem('oimp.seg')||startSeg;if(!SEGMENTS[startSeg])startSeg='pet';}catch(e){}
+  if(CHAL.seg&&SEGMENTS[CHAL.seg]&&!CHAL.applied){startSeg=CHAL.seg;CHAL.applied=true;}
   $('#app').innerHTML=`<header class="topbar"><div class="in"><div class="brand">${mainoLogo(30)}<h1>ImportTycoon</h1><small>um jogo da Mainô</small></div></div></header>
   <div class="wrap"><div class="start">
    <div class="hero"><h1>Construa seu império de importação.</h1><p>Você começa com R$ 150 mil, uma sala e um Radar limitado. Em 12 meses, suba de Garagem a Grupo Importador ou quebre tentando. Fornecedor, modal, câmbio, NCM, canal de parametrização, tributos, galpão, canal de venda: tudo é decisão sua.</p><div class="hero-strip">${spr('ship',3)}${spr('container',3)}${spr('plane',3)}${spr('truck',3)}${spr('fone',3)}${spr('smartwatch',3)}${spr('caixa',3)}${spr('carregador',3)}</div></div>
+   ${CHAL.week?`<div class="note">🎯 <b>Você foi desafiado!</b> Desafio ${CHAL.week}${CHAL.seg&&SEGMENTS[CHAL.seg]?' em '+SEGMENTS[CHAL.seg].name:''}: mesmo dólar, mesmos eventos e mesma procura de quem mandou o link. Abra a empresa e compare o card no final.</div>`:''}
    <div><h3 style="margin-bottom:8px">Em que segmento você vai importar?</h3><div class="modes" style="grid-template-columns:repeat(3,1fr)">${Object.values(SEGMENTS).map(g=>`<button class="mode ${startSeg===g.id?'on':''}" data-seg="${g.id}" aria-pressed="${startSeg===g.id}"><div class="row" style="justify-content:space-between"><h3>${spr(g.icon,2)} ${g.name}</h3><span class="pill ${g.level==='Fácil'?'verde':g.level==='Médio'?'amarelo':'vermelho'}">${g.level}</span></div><p class="small muted" style="margin-top:6px">${g.desc}</p></button>`).join('')}</div></div>
    <div><h3 style="margin-bottom:8px">Quem vai comandar a importadora?</h3><div class="avatars">${AVATARS.map((a,i)=>`<button class="mode av ${startAvatar===i?'on':''}" data-av="${i}" aria-pressed="${startAvatar===i}">${avatarImg(a,4)}<span>${a.name}</span></button>`).join('')}</div></div>
    <div class="row"><label class="field" style="flex:1;min-width:260px">Nome da empresa (vai no card)<input id="nick" maxlength="40" value="${esc(nick)}" placeholder="ex.: Importadora Horizonte" style="width:100%;font-size:1.1rem;padding:11px 14px"></label><button class="primary big" id="go">Abrir a empresa</button></div>
@@ -1633,5 +1648,4 @@ function boot(d){if(d&&d.S){S=d.S;applySegment(S.seg||'eletronicos');ui=d.ui||ui
 setAppIcon();
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
 </script>
-</body>
-</html>
+</body></html>

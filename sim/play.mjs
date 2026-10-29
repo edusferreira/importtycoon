@@ -1,6 +1,6 @@
 // Partidas "humanas razoáveis" por segmento: plano fixo e sensato, 60 seeds, mais a tabela mensal de uma seed.
 import fs from 'node:fs'; import vm from 'node:vm';
-const src = fs.readFileSync(new URL('../index.html', import.meta.url),'utf8').split('<script>')[1].split('</script>')[0];
+const src = fs.readFileSync('o-importador.html','utf8').split('<script>')[1].split('</script>')[0];
 const noop=new Proxy({},{get:()=>()=>noop,set:()=>true});
 const stub=()=>new Proxy({},{get:(t,k)=>k==='querySelectorAll'?()=>[]:k==='querySelector'?()=>stub():k==='remove'?()=>{}:k==='getContext'?()=>noop:k==='toDataURL'?()=>'':t[k],set:(t,k,v)=>{t[k]=v;return true;}});
 function engine(){const ctx={console,Math,Date,JSON,Object,Array,Number,String,Infinity,NaN,Intl,Proxy,performance:{now:()=>0},requestAnimationFrame:()=>0,cancelAnimationFrame(){},document:{querySelector:()=>stub(),querySelectorAll:()=>[],createElement:()=>stub(),body:{appendChild(){},contains:()=>false},documentElement:{dataset:{}},addEventListener(){},removeEventListener(){},head:{appendChild(){}}},window:{},navigator:{},localStorage:{getItem:()=>null,setItem(){}},matchMedia:()=>({matches:false}),getComputedStyle:()=>({color:'#000'})};
