@@ -15,6 +15,7 @@ Um único arquivo HTML, sem backend. Modo único: Desafio da semana, com a mesma
 | `sim/play.mjs` | Partida roteirizada "humana" para conferir o loop ponta a ponta |
 | `sim/mundo.mjs` | Prova de que jogadores com decisões diferentes veem o mesmo dólar e os mesmos eventos na mesma semana |
 | `sim/consult.mjs` | Mede o que acontece seguindo a consultoria todo mês, por nível e com ou sem Mainô Gestão |
+| `sim/stress.mjs` | Estresse: 13 estratégias extremas (só marketing, crédito máximo, NCM errada, desfazer em loop…) em 3 segmentos, caçando exceções, NaN, estoque negativo e exploits |
 
 ## Rodar localmente
 
@@ -29,6 +30,7 @@ Abra `http://localhost:8765/`. Abrir o arquivo direto pelo sistema também funci
 ```bash
 node sim/sim.mjs 100
 node sim/sim.mjs 100 --segmentos
+node sim/stress.mjs 30
 ```
 
 Flags extras: `--instrumentos`, `--filial`, `--mkt`, `--insp`, `--diag`. Alvo: estratégia razoável lucra, imprudente quebra por volta do quarto mês.
